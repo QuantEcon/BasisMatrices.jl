@@ -24,41 +24,9 @@ end
 
 @testset "test _param method" begin
     for (T, TP) in [(Cheb, ChebParams), (Lin, LinParams), (Spline, SplineParams)]
-        @test CompEcon._param(T) == TP
-        @test CompEcon._param(T()) == TP
+        @test BasisMatrices._param(T) == TP
+        @test BasisMatrices._param(T()) == TP
     end
-end
-
-@testset "Test original API compat" begin
-
-    s = Spline()
-    c = Cheb()
-    l = Lin()
-
-    @testset "old_name for basis family" begin
-        @test Original.old_name(s) == :spli
-        @test Original.old_name(c) == :cheb
-        @test Original.old_name(l) == :lin
-    end
-
-    @testset "old_name for params" begin
-        @test Original.old_name(sp) == :spli
-        @test Original.old_name(cp) == :cheb
-        @test Original.old_name(lp) == :lin
-    end
-
-    @testset "old_params" begin
-        @test Original.old_params(sp) == Any[sp.breaks, sp.evennum, sp.k]
-        @test Original.old_params(cp) == Any[cp.n, cp.a, cp.b]
-        @test Original.old_params(lp) == Any[lp.breaks, lp.evennum]
-    end
-
-    @testset "convert(Basis, Dict) and revert(Basis) --> Dict" begin
-        b = Basis(sp, cp)
-        d = Original.revert(b)
-        @test convert(Basis, d) == b
-    end
-
 end
 
 @testset "test more Param methods" begin

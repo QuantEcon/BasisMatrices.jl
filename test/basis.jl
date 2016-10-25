@@ -28,11 +28,6 @@
         # constructing multi-varaite basis
         @test Basis(bt, n, a, b, params) == b_all
 
-        # use Basis(Type, args...) constructor
-        @test Basis(Spline, Original.old_params(params[1])...) == b1
-        @test Basis(Cheb, Original.old_params(params[2])...) == b2
-        @test Basis(Lin, Original.old_params(params[3])...) == b3
-
         # use Basis(params) constructor
         @test Basis(params[1]) == b1
         @test Basis(params[2]) == b2

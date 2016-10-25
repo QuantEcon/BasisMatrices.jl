@@ -1,6 +1,6 @@
-# CompEcon
+# BasisMatrices
 
-[![Build Status](https://travis-ci.org/spencerlyon2/CompEcon.jl.svg?branch=master)](https://travis-ci.org/spencerlyon2/CompEcon.jl) [![codecov.io](http://codecov.io/github/spencerlyon2/CompEcon.jl/coverage.svg?branch=master)](http://codecov.io/github/spencerlyon2/CompEcon.jl?branch=master) [![Coverage Status](https://coveralls.io/repos/spencerlyon2/CompEcon.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/spencerlyon2/CompEcon.jl?branch=master)
+[![Build Status](https://travis-ci.org/QuantEcon/BasisMatrices.jl.svg?branch=master)](https://travis-ci.org/QuantEcon/BasisMatrices.jl) [![codecov.io](http://codecov.io/github/QuantEcon/BasisMatrices.jl/coverage.svg?branch=master)](http://codecov.io/github/QuantEcon/BasisMatrices.jl?branch=master) [![Coverage Status](https://coveralls.io/repos/QuantEcon/BasisMatrices.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/QuantEcon/BasisMatrices.jl?branch=master)
 
 
 
@@ -56,7 +56,7 @@ y = funeval(c,basis,x);
 The corresponding Julia code is
 
 ```julia
-using CompEcon
+using BasisMatrices
 # function to approximate
 f(x) = exp(-x)
 
@@ -104,7 +104,7 @@ The main differences are:
 The corresponding code with the more Julian API currently (2015-04-22 17:45:10) looks like this:
 
 ```julia
-using CompEcon
+using BasisMatrices
 # function to approximate
 f(x) = exp(-x)
 
@@ -190,7 +190,7 @@ This section provides a sketch of the type based Julian API.
 
 ### Theoretical Foundation
 
-To understand the Julian API and type system, we first need to understand the fundamental theory behind the interpolation scheme implemented here. Interpolation in CompEcon is built around three key concepts:
+To understand the Julian API and type system, we first need to understand the fundamental theory behind the interpolation scheme implemented here. Interpolation in BasisMatrices is built around three key concepts:
 
 1. An functional `Basis`: for each dimension, the basis specifies
     - family of basis function (B spline, Chebyshev polynomials, ect.)

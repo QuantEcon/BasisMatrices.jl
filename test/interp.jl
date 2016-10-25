@@ -1,15 +1,15 @@
 cases = ["B-splines","Cheb","Lin"]
 
 # construct basis
-holder = (CompEcon.Basis(CompEcon.SplineParams(15,-1,1,1),CompEcon.SplineParams(20,-5,2,3)),
-    CompEcon.Basis(CompEcon.ChebParams(15,-1,1),CompEcon.ChebParams(20,-5,2)),
-    CompEcon.Basis(CompEcon.LinParams(15,-1,1),CompEcon.LinParams(20,-5,2)))
+holder = (BasisMatrices.Basis(BasisMatrices.SplineParams(15,-1,1,1),BasisMatrices.SplineParams(20,-5,2,3)),
+    BasisMatrices.Basis(BasisMatrices.ChebParams(15,-1,1),BasisMatrices.ChebParams(20,-5,2)),
+    BasisMatrices.Basis(BasisMatrices.LinParams(15,-1,1),BasisMatrices.LinParams(20,-5,2)))
 
 @testset for (i, case) in enumerate(cases)
     basis = holder[i]
 
     # get nodes
-    X, x12 = CompEcon.nodes(basis)
+    X, x12 = BasisMatrices.nodes(basis)
 
     # function to interpolate
     f(x1, x2) = cos(x1) ./ exp(x2)
@@ -19,57 +19,57 @@ holder = (CompEcon.Basis(CompEcon.SplineParams(15,-1,1,1),CompEcon.SplineParams(
     y = f(X)
 
     # benchmark coefficients
-    c_direct, bs_direct = CompEcon.funfitxy(basis, X, y)
+    c_direct, bs_direct = BasisMatrices.funfitxy(basis, X, y)
 
     @testset "test funfitxy for tensor and direct agree on coefs" begin
-        c_tensor, bs_tensor = CompEcon.funfitxy(basis, x12, y)
+        c_tensor, bs_tensor = BasisMatrices.funfitxy(basis, x12, y)
         @test maxabs(c_tensor -  c_direct) <=  1e-12
     end
 
     @testset "test funfitf" begin
-        c = CompEcon.funfitf(basis,f)
+        c = BasisMatrices.funfitf(basis,f)
         @test maxabs(c -  c_direct) <=  1e-12
     end
 
     @testset "test funeval methods" begin
         # single point
-        sp = CompEcon.funeval(c_direct,basis,X[5:5,:])[1]
+        sp = BasisMatrices.funeval(c_direct,basis,X[5:5,:])[1]
         @test maxabs(sp -  y[5]) <= 1e-12
 
         # multiple points using tensor directly
-        mp = CompEcon.funeval(c_direct,basis,x12)
+        mp = BasisMatrices.funeval(c_direct,basis,x12)
         @test maxabs(mp -  y) <=  1e-12
 
         # multiple points using direct
-        mp = CompEcon.funeval(c_direct,basis,X)
+        mp = BasisMatrices.funeval(c_direct,basis,X)
         @test maxabs(mp -  y) <=  1e-12
 
         # multiple points giving basis in direct form
-        mpd = CompEcon.funeval(c_direct,bs_direct)
+        mpd = BasisMatrices.funeval(c_direct,bs_direct)
         @test maxabs(mpd -  y) <=  1e-12
 
         # multiple points giving basis in expanded form
-        Phiexp = Base.convert(CompEcon.Expanded,bs_direct)
-        mpe = CompEcon.funeval(c_direct,Phiexp)
+        Phiexp = Base.convert(BasisMatrices.Expanded,bs_direct)
+        mpe = BasisMatrices.funeval(c_direct,Phiexp)
         @test maxabs(mpe -  y) <=  1e-12
 
     end
 
     @testset "test interpoland methods" begin
         # (Basis,BasisStructure,..)
-        intp1 = CompEcon.Interpoland(basis,bs_direct,y)
-        @test maxabs(CompEcon.evaluate(intp1,X) - y) <= 1e-12
+        intp1 = BasisMatrices.Interpoland(basis,bs_direct,y)
+        @test maxabs(BasisMatrices.evaluate(intp1,X) - y) <= 1e-12
         # (Basis,Array,..)
-        intp2 = CompEcon.Interpoland(basis,X,y)
-        @test maxabs(CompEcon.evaluate(intp2,X) - y) <= 1e-12
+        intp2 = BasisMatrices.Interpoland(basis,X,y)
+        @test maxabs(BasisMatrices.evaluate(intp2,X) - y) <= 1e-12
         # (BasisParams,Function)
-        intp3 = CompEcon.Interpoland(basis,f)
-        @test maxabs(CompEcon.evaluate(intp3,X) - y) <= 1e-12
+        intp3 = BasisMatrices.Interpoland(basis,f)
+        @test maxabs(BasisMatrices.evaluate(intp3,X) - y) <= 1e-12
     end
 
     @testset "Printing" begin
         iob = IOBuffer()
-        show(iob, CompEcon.Interpoland(basis, bs_direct, y))
+        show(iob, BasisMatrices.Interpoland(basis, bs_direct, y))
     end
 
     # TODO: call show on an interpoland instance to get coverage for writemime

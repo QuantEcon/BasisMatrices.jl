@@ -9,7 +9,7 @@
 
     x = rand(10000)
 
-    basestr = @inferred CompEcon.evalbase(params, x)
+    basestr = @inferred BasisMatrices.evalbase(params, x)
     base = full(basestr)
 
     # vector of basis functions

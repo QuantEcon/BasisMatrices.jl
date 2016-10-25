@@ -1,6 +1,6 @@
-module CompEconTests
+module BasisMatricesTests
 
-using CompEcon
+using BasisMatrices
 
 if VERSION >= v"0.5-"
     using Base.Test

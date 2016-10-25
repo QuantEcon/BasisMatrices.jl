@@ -9,13 +9,13 @@
     X, x123 = nodes(mb)
 
     # construct expanded, direct, and tensor basis-structure representation
-    Φ_expanded = CompEcon.BasisStructure(mb, CompEcon.Expanded(), X)
-    Φ_direct = CompEcon.BasisStructure(mb, CompEcon.Direct(), X)
-    Φ_tensor = CompEcon.BasisStructure(mb, CompEcon.Tensor(), x123)
+    Φ_expanded = BasisMatrices.BasisStructure(mb, BasisMatrices.Expanded(), X)
+    Φ_direct = BasisMatrices.BasisStructure(mb, BasisMatrices.Direct(), X)
+    Φ_tensor = BasisMatrices.BasisStructure(mb, BasisMatrices.Tensor(), x123)
 
     # construct expanded, direct, and tensor basis-structure representation with 1D basis
-    Φ_expanded_1d = CompEcon.BasisStructure(mb[1], CompEcon.Expanded(), X[:,1])
-    Φ_direct_1d = CompEcon.BasisStructure(mb[1], CompEcon.Direct(), X[:,1])
+    Φ_expanded_1d = BasisMatrices.BasisStructure(mb[1], BasisMatrices.Expanded(), X[:,1])
+    Φ_direct_1d = BasisMatrices.BasisStructure(mb[1], BasisMatrices.Direct(), X[:,1])
 
     @testset "test standard Base methods" begin
         # test == and ndims, multiD
@@ -62,11 +62,11 @@
         for (TF, TM) in [(Spline, SparseMatrixCSC{Float64,Int}),
                          (Lin, SparseMatrixCSC{Float64,Int}),
                          (Cheb, Matrix{Float64})]
-            @test CompEcon._vals_type(TF) == TM
-            @test CompEcon._vals_type(TF()) == TM
+            @test BasisMatrices._vals_type(TF) == TM
+            @test BasisMatrices._vals_type(TF()) == TM
         end
 
-        @test CompEcon._vals_type(CompEcon.BasisFamily) == AbstractMatrix{Float64}
+        @test BasisMatrices._vals_type(BasisMatrices.BasisFamily) == AbstractMatrix{Float64}
 
         ## test _checkx
         # create test data
@@ -74,47 +74,47 @@
         xv = rand(2)
         xvv = [rand(2) for i=1:2]
 
-        @test CompEcon._checkx(2, xm) == xm
-        @test CompEcon._checkx(2, xv) == reshape(xv, 1, 2)
-        @test CompEcon._checkx(2, xvv) == xvv
-        @test CompEcon._checkx(1, xv) == xv
+        @test BasisMatrices._checkx(2, xm) == xm
+        @test BasisMatrices._checkx(2, xv) == reshape(xv, 1, 2)
+        @test BasisMatrices._checkx(2, xvv) == xvv
+        @test BasisMatrices._checkx(1, xv) == xv
 
-        @test_throws ErrorException CompEcon._checkx(2, rand(1, 3))
-        @test_throws ErrorException CompEcon._checkx(2, rand(3))
-        @test_throws ErrorException CompEcon._checkx(2, [rand(2) for i=1:3])
+        @test_throws ErrorException BasisMatrices._checkx(2, rand(1, 3))
+        @test_throws ErrorException BasisMatrices._checkx(2, rand(3))
+        @test_throws ErrorException BasisMatrices._checkx(2, [rand(2) for i=1:3])
 
         ## test check_convert
         for Φ in (Φ_expanded, Φ_direct, Φ_tensor)
-            @test CompEcon.check_convert(Φ, zeros(1, 3)) == (3, 1, 3)
-            @test_throws ErrorException CompEcon.check_convert(Φ, zeros(1, 2))
-            @test_throws ErrorException CompEcon.check_convert(Φ, fill(-1, 1, 3))
+            @test BasisMatrices.check_convert(Φ, zeros(1, 3)) == (3, 1, 3)
+            @test_throws ErrorException BasisMatrices.check_convert(Φ, zeros(1, 2))
+            @test_throws ErrorException BasisMatrices.check_convert(Φ, fill(-1, 1, 3))
         end
 
         ## test check_basis_structure
         @testset "test check_basis_structure" begin
             order1 = zeros(Int, 1, 2)
-            out1 = CompEcon.check_basis_structure(2, xm, order1)
+            out1 = BasisMatrices.check_basis_structure(2, xm, order1)
             @test out1 == (1, order1, order1, [1 1], xm)
 
             # test when order::Int
-            @test CompEcon.check_basis_structure(2, xm, 0) == out1
+            @test BasisMatrices.check_basis_structure(2, xm, 0) == out1
 
             # test the reshape(order, 1, N) branch (isa(order, Vector))
-            @test CompEcon.check_basis_structure(2, xm, [0, 0]) == out1
+            @test BasisMatrices.check_basis_structure(2, xm, [0, 0]) == out1
 
             # check N=1 --> order = fill(order, 1, 1) branch
-            out_1d = CompEcon.check_basis_structure(1, xv, 0)
+            out_1d = BasisMatrices.check_basis_structure(1, xv, 0)
             order_1d_out = fill(0, 1, 1)
             @test out_1d == (1, order_1d_out, order_1d_out, fill(1, 1, 1), xv)
 
             # check m > 1 branch
             order_m2 = [0 0; 1 1; 0 -1]
-            out_m2 = CompEcon.check_basis_structure(2, xm, order_m2)
+            out_m2 = BasisMatrices.check_basis_structure(2, xm, order_m2)
             @test out_m2 == (3, order_m2, [0 -1], [2 3], xm)
 
 
             order2 = zeros(Int, 1, 5)  # should throw error
-            @test_throws ErrorException CompEcon.check_basis_structure(2, X,
+            @test_throws ErrorException BasisMatrices.check_basis_structure(2, X,
                                                                        order2)
         end
 
@@ -126,12 +126,12 @@
     end
 
     @testset "Test from PR #25" begin
-        basisμ = CompEcon.Basis(Cheb, 20, 0.0, 1.0)
-        basisσ = CompEcon.Basis(Cheb, 20, 0.0, 1.0)
-        basis = CompEcon.Basis(basisμ, basisσ)
-        S, (μs, σs) = CompEcon.nodes(basis)
-        bs = CompEcon.BasisStructure(basis, CompEcon.Expanded(), S, [0 2])
-        @test isa(bs, CompEcon.BasisStructure{Expanded}) == true
+        basisμ = BasisMatrices.Basis(Cheb, 20, 0.0, 1.0)
+        basisσ = BasisMatrices.Basis(Cheb, 20, 0.0, 1.0)
+        basis = BasisMatrices.Basis(basisμ, basisσ)
+        S, (μs, σs) = BasisMatrices.nodes(basis)
+        bs = BasisMatrices.BasisStructure(basis, BasisMatrices.Expanded(), S, [0 2])
+        @test isa(bs, BasisMatrices.BasisStructure{Expanded}) == true
     end
 
 

@@ -59,11 +59,7 @@ import Base: ==, *, \
 
 using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 
-export golden_method
 import Compat
-
-# zeros
-export bisect, brenth, brent, ridder, expand_bracket, divide_bracket
 
 # types
 export BasisFamily, Cheb, Lin, Spline, Basis,
@@ -72,18 +68,15 @@ export BasisFamily, Cheb, Lin, Spline, Basis,
        BasisStructure, Interpoland, SplineSparse
 
 # functions
-export old_name, nodes, revert, get_coefs, funfitxy, funfitf, funeval,
-       derivative_op, funbasex, row_kron, evaluate, fit!, update_coefs!,
+export nodes, get_coefs, funfitxy, funfitf, funeval,
+       derivative_op, row_kron, evaluate, fit!, update_coefs!,
        complete_polynomial, complete_polynomial!, n_complete
 
 include("util.jl")
 include("spline_sparse.jl")
-include("zeros.jl")
-include("optimization.jl")
 include("basis.jl")
 include("basis_structure.jl")
 include("interp.jl")
-include("quad.jl")
 
 # include the rest of the Julian API
 include("cheb.jl")

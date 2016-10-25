@@ -9,9 +9,8 @@ else
     const Test = BaseTestNext
 end
 
-tests = ["types.jl", "basis.jl", "optimization.jl", "util.jl",
-              "spline.jl",	"interp.jl", "cheb.jl", "lin.jl",
-              "basis_structure.jl", "zeros.jl", "complete.jl"]
+tests = ["types.jl", "basis.jl", "util.jl", "spline.jl", "interp.jl",
+         "cheb.jl", "lin.jl", "basis_structure.jl", "complete.jl"]
 
 if length(ARGS) > 0
     tests = ARGS

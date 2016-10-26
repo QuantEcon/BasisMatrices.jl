@@ -68,7 +68,7 @@ export BasisFamily, Cheb, Lin, Spline, Basis,
        BasisStructure, Interpoland, SplineSparse
 
 # functions
-export nodes, get_coefs, funfitxy, funfitf, funeval,
+export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
        derivative_op, row_kron, evaluate, fit!, update_coefs!,
        complete_polynomial, complete_polynomial!, n_complete
 

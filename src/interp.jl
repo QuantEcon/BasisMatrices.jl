@@ -44,7 +44,7 @@ end
 function funfitxy{T}(basis::Basis, x::Vector{Vector{T}}, y)
     m = check_funfit(basis, x, y)
 
-    # additional checks for cell array
+    # additional checks for Array{Any} array
     mm = prod([size(xi, 1) for xi in x])
     mm != m && error("x and y are incompatible")
 

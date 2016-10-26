@@ -165,7 +165,7 @@ end
 
 function nodeunif(n::Array, a::Array, b::Array)
     d = length(n)
-    xcoord = cell(d)
+    xcoord = Array{Any}(d)
     for k=1:d
         xcoord[k] = linspace(a[k], b[k], n[k])
     end

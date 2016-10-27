@@ -10,7 +10,8 @@ else
 end
 
 tests = ["types.jl", "basis.jl", "util.jl", "spline.jl", "interp.jl",
-         "cheb.jl", "lin.jl", "basis_structure.jl", "complete.jl"]
+         "cheb.jl", "lin.jl", "basis_structure.jl", "complete.jl",
+         "spline_sparse.jl"]
 
 if length(ARGS) > 0
     tests = ARGS

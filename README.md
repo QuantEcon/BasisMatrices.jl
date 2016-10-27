@@ -3,12 +3,14 @@
 [![Build Status](https://travis-ci.org/QuantEcon/BasisMatrices.jl.svg?branch=master)](https://travis-ci.org/QuantEcon/BasisMatrices.jl) [![codecov.io](http://codecov.io/github/QuantEcon/BasisMatrices.jl/coverage.svg?branch=master)](http://codecov.io/github/QuantEcon/BasisMatrices.jl?branch=master) [![Coverage Status](https://coveralls.io/repos/QuantEcon/BasisMatrices.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/QuantEcon/BasisMatrices.jl?branch=master)
 
 
+Portions of this library are inspired by the CompEcon Matlab toolbox](http://www4.ncsu.edu/~pfackler/compecon/toolbox.html) by Paul Fackler and Mario Miranda. The original Matlab code was written to accompany the publication
+
+> Miranda, Mario J., and Paul L. Fackler. Applied computational economics and finance. MIT press, 2004.
+
+The portions of this package that are based on their code have been licensed with their permission.
+
 ## Quick (and incomplete intro)
 
-This library is based off of a few sources:
-
-- [CompEcon Matlab package](http://www4.ncsu.edu/~pfackler/compecon/toolbox.html)
-- Routines by [Lilia and Serguei Maliar](http://stanford.edu/~maliars/)
 
 ### Matlab-esque interface
 

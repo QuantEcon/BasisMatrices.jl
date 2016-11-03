@@ -64,8 +64,8 @@ import Compat
 # types
 export BasisFamily, Cheb, Lin, Spline, Basis,
        BasisParams, ChebParams, LinParams, SplineParams,
-       AbstractBasisStructureRep, Tensor, Expanded, Direct,
-       BasisStructure, Interpoland, SplineSparse
+       AbstractBasisMatrixRep, Tensor, Expanded, Direct,
+       BasisMatrix, Interpoland, SplineSparse
 
 # functions
 export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
@@ -85,5 +85,9 @@ include("lin.jl")
 
 # include comlpete
 include("complete.jl")
+
+
+# deprecations
+@deprecate BasisStructure BasisMatrix
 
 end # module

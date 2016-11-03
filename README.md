@@ -18,7 +18,7 @@ For an API similar to the original [CompEcon Matlab package](http://www4.ncsu.ed
 
 ## Example
 
-Here's an example of how to use the Julia-based API to set up multi-dimensional basis structure and work with it.
+Here's an example of how to use the Julia-based API to set up multi-dimensional basis matrix and work with it.
 
 ```julia
 ygrid0 = linspace(-4, 4, 10)
@@ -40,9 +40,9 @@ S, (agrid, ygrid) = nodes(basis)
 
 # construct basis matrix and its lu-factorization for very fast inversion
 # NOTE: I am doing this in a round-about way. I could have just done
-#       Φ = BasisStructure(basis), but doing it this way gives me the direct
+#       Φ = BasisMatrix(basis), but doing it this way gives me the direct
 #       representation so I get Φ_y without repeating any calculations
-Φ_direct = BasisStructure(basis, Direct(), S, [0 0])
+Φ_direct = BasisMatrix(basis, Direct(), S, [0 0])
 Φ_y = Φ_direct.vals[2]
 Φ = convert(Expanded, Φ_direct, [0 0]).vals[1]
 lu_Φ = lufact(Φ)
@@ -60,7 +60,7 @@ To understand the Julian API and type system, we first need to understand the fu
     - family of basis function (B spline, Chebyshev polynomials, ect.)
     - domain (bounds)
     - interpolation nodes (grid on domain)
-2. A `BasisStructure`:
+2. A `BasisMatrix`:
     - Represents the evaluation of basis functions at the interpolation nodes
     - Constructed one dimension at a time, then combined with tensor product
 3. A coefficient vector: used to map from domain of the `Basis` into real line
@@ -129,23 +129,23 @@ The `Basis` has support for the following methods:
 - `==`: test two basis for equality
 - `nodes(b::Basis)->(Matrix, Vector{Vector{Float64}})`: the interpolation nodes. the first element is the tensor product of all dimensions, second element is a vector of vectors, where the `i`th element contains the nodes along dimension `i`.
 
-#### `BasisStructure` representation
+#### `BasisMatrix` representation
 
-Next we turn to representing the `BasisStructure`, which is responsible for keeping track of the basis functions evaluated at the interpolation nodes. To keep track of this representation, we have another family of helper types:
+Next we turn to representing the `BasisMatrix`, which is responsible for keeping track of the basis functions evaluated at the interpolation nodes. To keep track of this representation, we have another family of helper types:
 
 ```julia
-abstract AbstractBasisStructureRep
-typealias ABSR AbstractBasisStructureRep
+abstract AbstractBasisMatrixRep
+typealias ABSR AbstractBasisMatrixRep
 
 immutable Tensor <: ABSR end
 immutable Direct <: ABSR end
 immutable Expanded <: ABSR end
 ```
 
-`AbstractBasisStructureRep` is an abstract types, whose subtypes are singletons that specify how the basis matrices are stored. To understand how they are different, we need to see the structure of the `BasisStructure` type:
+`AbstractBasisMatrixRep` is an abstract types, whose subtypes are singletons that specify how the basis matrices are stored. To understand how they are different, we need to see the structure of the `BasisMatrix` type:
 
 ```julia
-type BasisStructure{BST<:ABSR}
+type BasisMatrix{BST<:ABSR}
     order::Matrix{Int}
     vals::Array{AbstractMatrix}
 end
@@ -154,7 +154,7 @@ end
 The `order` field keeps track of what order of derivative or integral the arrays inside `vals` correspond to.
 
 
-The content inside `vals` will vary based on the type Parameter `BST<:AbstractBasisStructureRep`:
+The content inside `vals` will vary based on the type Parameter `BST<:AbstractBasisMatrixRep`:
 
 1. for `BST==Tensor` `vals` will store the evaluation of the basis functions at each of the integration nodes indpendently. Thus, the `[d, i]` element will be the derivative order `d` Basis at the interpolation nodes along the `i`th dimension (each column is a basis function, each row is an interpolation node). This is the most compact and memory efficient representation
 2. For `BST==Direct` `vals` will expand along the first dimension (rows) of the array so that for each `i`, the `[d, i]` element will have `length(basis)` rows and `basis.n[i]` (modulo loss or addition of basis functions from derivative/intergral operators.)
@@ -168,8 +168,8 @@ Finally the convenient `Interpoland` type:
 type Interpoland{T<:FloatingPoint,N,BST<:ABSR}
     basis::Basis{N}
     coefs::Vector{T}
-    bstruct::BasisStructure{BST}
+    bstruct::BasisMatrix{BST}
 end
 ```
 
-This type doesn't do a whole lot. It's main purpose is to keep track of the coefficient vector and the `Basis` so the user doesn't have to carry both of them around. It also holds a `BasisStructure` for the evaluation of the basis matrices at the interpolation nodes. This means that if the coefficient vector needs to be updated, this `BasisStructure` will not be re-computed.
+This type doesn't do a whole lot. It's main purpose is to keep track of the coefficient vector and the `Basis` so the user doesn't have to carry both of them around. It also holds a `BasisMatrix` for the evaluation of the basis matrices at the interpolation nodes. This means that if the coefficient vector needs to be updated, this `BasisMatrix` will not be re-computed.

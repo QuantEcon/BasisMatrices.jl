@@ -17,7 +17,7 @@ lp = LinParams(linspace(0, 5, 10), 0)
 
     @testset "basis structure representations" begin
         for T in [Tensor, Direct, Expanded]
-            @test T <: AbstractBasisStructureRep
+            @test T <: AbstractBasisMatrixRep
         end
     end
 end

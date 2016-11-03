@@ -9,13 +9,13 @@
     X, x123 = nodes(mb)
 
     # construct expanded, direct, and tensor basis-structure representation
-    Φ_expanded = BasisMatrices.BasisStructure(mb, BasisMatrices.Expanded(), X)
-    Φ_direct = BasisMatrices.BasisStructure(mb, BasisMatrices.Direct(), X)
-    Φ_tensor = BasisMatrices.BasisStructure(mb, BasisMatrices.Tensor(), x123)
+    Φ_expanded = BasisMatrices.BasisMatrix(mb, BasisMatrices.Expanded(), X)
+    Φ_direct = BasisMatrices.BasisMatrix(mb, BasisMatrices.Direct(), X)
+    Φ_tensor = BasisMatrices.BasisMatrix(mb, BasisMatrices.Tensor(), x123)
 
     # construct expanded, direct, and tensor basis-structure representation with 1D basis
-    Φ_expanded_1d = BasisMatrices.BasisStructure(mb[1], BasisMatrices.Expanded(), X[:,1])
-    Φ_direct_1d = BasisMatrices.BasisStructure(mb[1], BasisMatrices.Direct(), X[:,1])
+    Φ_expanded_1d = BasisMatrices.BasisMatrix(mb[1], BasisMatrices.Expanded(), X[:,1])
+    Φ_direct_1d = BasisMatrices.BasisMatrix(mb[1], BasisMatrices.Direct(), X[:,1])
 
     @testset "test standard Base methods" begin
         # test == and ndims, multiD
@@ -130,8 +130,8 @@
         basisσ = BasisMatrices.Basis(Cheb, 20, 0.0, 1.0)
         basis = BasisMatrices.Basis(basisμ, basisσ)
         S, (μs, σs) = BasisMatrices.nodes(basis)
-        bs = BasisMatrices.BasisStructure(basis, BasisMatrices.Expanded(), S, [0 2])
-        @test isa(bs, BasisMatrices.BasisStructure{Expanded}) == true
+        bs = BasisMatrices.BasisMatrix(basis, BasisMatrices.Expanded(), S, [0 2])
+        @test isa(bs, BasisMatrices.BasisMatrix{Expanded}) == true
     end
 
 

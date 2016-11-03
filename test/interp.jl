@@ -56,7 +56,7 @@ holder = (BasisMatrices.Basis(BasisMatrices.SplineParams(15,-1,1,1),BasisMatrice
     end
 
     @testset "test interpoland methods" begin
-        # (Basis,BasisStructure,..)
+        # (Basis,BasisMatrix,..)
         intp1 = BasisMatrices.Interpoland(basis,bs_direct,y)
         @test maxabs(BasisMatrices.evaluate(intp1,X) - y) <= 1e-12
         # (Basis,Array,..)

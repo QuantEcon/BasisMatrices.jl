@@ -126,17 +126,120 @@ end
 # cdprodx.m -- DONE
 cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
 
-
-# TODO: this should be a fold
-function cdprodx(b::Array, c, ind=1:prod(size(b)))
-    d = length(ind)
-    a = b[ind[d]]
-    for i=d-1:-1:1
-        a = row_kron(b[ind[i]], a)
+# cdprodx.c
+function cdprodx(b::Array, c, ind::AbstractVector{Int}=1:prod(size(b)))
+    # input verification
+    nrow = size(b[1], 1)
+    for _b in b[2:end]
+        @assert size(_b, 1) == nrow "Must have same # of rows"
     end
-    a = a * c
-end
 
+    crow = size(c, 1)
+    ccol = size(c, 2)
+    ncol = *([size(_b, 2) for _b in b]...)
+    @assert ncol == crow "nrows in c must be product of cols in b"
+
+    _ind_min, _ind_max = extrema(ind)
+    @assert _ind_min > 0 && _ind_max <= length(b) "ind not conformable"
+
+    # allocate temporary and ouput arrays
+    Nb = length(ind)
+    out = zeros(Float64, nrow, ccol)
+
+    # put B in desired order
+    B = [b[_] for _ in ind]
+    _is_sparse = [issparse(_) for _ in B]
+    _last_sparse = _is_sparse[end]
+    d = Array(Float64, nrow, Nb)
+    d[:, 1] = 1.0
+
+    n_col_B = [size(_, 2) for _ in B]
+    cur_col_B = copy(n_col_B) + 1
+
+    Bend = B[end]
+
+    @inbounds for i in 1:crow  # loop over rows of c
+        if cur_col_B[end] > n_col_B[end]
+            cur_col_B[end] = 1
+            j = Nb
+            while j > 1
+                j -= 1
+                cur_col_B[j] += 1
+
+                if cur_col_B[j] <= n_col_B[j]
+                    break
+                else
+                    cur_col_B[j] = 1
+                end
+            end
+
+            for col_d in j+1:Nb
+                _j = col_d - 1
+                _col_j = cur_col_B[_j]
+                this_B = B[_j]
+
+                if _is_sparse[_j]
+                    d[:, col_d] = 0.0
+
+                    # fill in non-zero rows
+                    for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
+                        _r = this_B.rowval[ptr]
+                        _v = this_B.nzval[ptr]
+                        d[_r, col_d] = d[_r, col_d-1] * _v
+                    end
+
+                else
+
+                    @simd for row_d in 1:nrow
+                        d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
+                    end
+                end
+            end
+
+        end
+
+        # now we use d[:, end] .* B[end][:, cur_col_B[end]] .* c[i]
+        ccB = cur_col_B[end]
+        if _last_sparse
+            if ccol == 1
+                ci = c[i]
+                for ptr in Bend.colptr[ccB]:(Bend.colptr[ccB+1]-1)
+                    _r = Bend.rowval[ptr]
+                    _v = Bend.nzval[ptr]
+                    out[_r] += d[_r, end] * _v * ci
+                end
+            else
+                for ptr in (Bend.colptr[ccB]):(Bend.colptr[ccB+1]-1)
+                    _r = Bend.rowval[ptr]
+                    _v = Bend.nzval[ptr]
+                    full_B = d[_r, end] * _v
+
+                    for _c in 1:ccol
+                        out[_r, _c] += full_B * c[i, _c]
+                    end
+                end
+            end
+        else
+            if ccol == 1
+                ci = c[i]
+                @simd for _r in 1:nrow
+                    out[_r] += d[_r, end] * Bend[_r, ccB] * ci
+                end
+            else
+                for _r in 1:nrow
+                    full_B = d[_r, end] * Bend[_r, ccB]
+                    for _c in 1:ccol
+                        out[_r, _c] += full_B * c[i, _c]
+                    end
+                end
+            end
+
+        end
+        cur_col_B[end] += 1
+    end
+    out
+
+end
 
 # cckronx.m -- DONE
 cckronx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b * c  # 23

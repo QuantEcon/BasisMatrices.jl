@@ -4,8 +4,7 @@
 
 # ckronx.m -- DONE
 function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
-                                    ind::AbstractMatrix{Int}=reshape(1:length(b),
-                                                                     1, length(b)))
+                                    ind::AbstractArray{Int}=1:length(b))
     d = length(ind)  # 26
     n = Array(Int, d)  # 27
     for i=1:d  # 28
@@ -25,12 +24,7 @@ function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
         z = b[ind[i]] * z'  # 37
         mm = mm * size(z, 1)  # 38
     end
-    z = reshape(z, mm, size(c, 2))  # 40
-end
-
-function ckronx{TM<:AbstractMatrix}(b::Matrix{TM}, c::Array,
-                                    ind::AbstractVector{Int})
-    ckronx(b, c, reshape(ind, 1, length(ind)))
+    reshape(z, mm, size(c, 2))  # 40
 end
 
 # dprod.m  - DONE
@@ -61,47 +55,64 @@ function row_kron{S,T}(A::SparseMatrixCSC{S}, B::SparseMatrixCSC{T})
     nobsa, na = size(A)
     nobsb, nb = size(B)
 
-    # doing this on the transpose so the row indices will be sorted
-    cols_a, rows_a, vals_a = findnz(A')
-    cols_b, rows_b, vals_b = findnz(B')
-
-    # nnza, nnzb = map(length, (ra, rb))
-
-    prev_last_a = searchsortedfirst(rows_a, 0)
-    prev_last_b = searchsortedfirst(rows_b, 0)
-
-    I = Array(Int64, 0)
-    J = Array(Int64, 0)
-    V = Array(promote_type(S, T), 0)
-
-    for t in 1:nobsa
-        next_last_a = searchsortedfirst(rows_a, t+1)
-        next_last_b = searchsortedfirst(rows_b, t+1)
-        these_cols_a = cols_a[prev_last_a:next_last_a-1]
-        these_cols_b = cols_b[prev_last_b:next_last_b-1]
-
-        these_vals_a = vals_a[prev_last_a:next_last_a-1]
-        these_vals_b = vals_b[prev_last_b:next_last_b-1]
-
-        for ia in 1:length(these_cols_a)
-            ca = these_cols_a[ia]
-            for ib in 1:length(these_cols_b)
-                cb = these_cols_b[ib]
-                push!(I, t)
-                push!(J, nb*(ca-1) + cb)
-                push!(V, these_vals_a[ia] * these_vals_b[ib])
-            end
-        end
-
-        prev_last_a = next_last_a
-        prev_last_b = next_last_b
-
-        # # cut down ra, rb so search sorted doesn't have to work as hard
-        # rows_a = rows_a[prev_last_a-1:end]
-        # rows_b = rows_b[prev_last_a-1:end]
+    # get number of non-zeros in out
+    acounts = zeros(Int, nobsa)
+    @inbounds for col in 1:na, ptr in A.colptr[col]:(A.colptr[col+1]-1)
+        acounts[A.rowval[ptr]] += 1
     end
 
-    sparse(I, J, V, nobsa, na*nb)
+    bcounts = zeros(Int, nobsa)
+    @inbounds for col in 1:nb, ptr in B.colptr[col]:(B.colptr[col+1]-1)
+        bcounts[B.rowval[ptr]] += 1
+    end
+
+    k = 0
+    @inbounds @simd for _r in 1:nobsa
+        k += acounts[_r]*bcounts[_r]
+    end
+
+    av = A.nzval
+    bv = B.nzval
+
+    colptr = zeros(Int, na*nb+1)
+    rowval = zeros(Int, k)
+    nzval = zeros(promote_type(S, T), k)
+
+    colptr[1] = 1
+    ck = 1  # running total for colptr
+    rv_ix = 0  # which entry of rowval and nzval should be filled
+    col_ix = 1 # which entry of colptr should be filled
+
+    @inbounds for i in 1:na  # columns of a
+        start_a = A.colptr[i]
+        len_a = A.colptr[i+1] - start_a
+        b_end = 1
+        for j in 2:nb+1  # columns of b
+            ix_b = b_end
+            b_end = B.colptr[j]
+
+            ix_a = 0
+
+            while ix_a < len_a && ix_b < b_end
+                if A.rowval[start_a+ix_a] == B.rowval[ix_b]
+                    # found one!
+                    nzval[rv_ix+=1] = av[start_a + ix_a] * bv[ix_b]
+                    rowval[rv_ix] = A.rowval[start_a+ix_a]
+                    ix_a += 1
+                    ck += 1
+                elseif A.rowval[start_a+ix_a] < B.rowval[ix_b]
+                    ix_a += 1
+                else
+                    ix_b += 1
+                end
+            end
+
+            colptr[col_ix+=1] = ck
+        end
+
+    end
+
+    SparseMatrixCSC(nobsa, na*nb, colptr, rowval, nzval)
 end
 
 # ckronxi.m -- DONE

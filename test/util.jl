@@ -94,4 +94,31 @@ end
         rows_good &= out[row, :] == kron(a[row, :], b[row, :])
     end
     @test rows_good == true
+
+
+    for i in 1:100
+        A = sprandn(30, 5, 0.3)
+        B = sprandn(30, 3, 0.3)
+
+        want = row_kron(A, B)
+
+        @test maxabs(want - row_kron(full(A), B)) == 0
+        @test maxabs(want - row_kron(A, full(B))) == 0
+        @test maxabs(want - row_kron(full(A), full(B))) == 0
+    end
+end
+
+@testset "cdprodx" begin
+    for nrow in 3:3:100
+        for nb in 2:5
+            b = [sprand(nrow, rand(5:13), 0.3) for _ in 1:nb]
+            c = rand(prod([size(_, 2) for _ in b]))
+
+            full_b = reduce(row_kron, b)
+            want = full_b * c
+            have = BasisMatrices.cdprodx(b, c)
+
+            @test maxabs(want - have) < 1e-12
+        end
+    end
 end

@@ -28,6 +28,11 @@ function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
 end
 
 # dprod.m  - DONE
+function row_kron{S,T}(A::AbstractMatrix{S}, B::AbstractMatrix{T})
+    out = _allocate_row_kron_out(A, B)
+    row_kron!(A, B, out)
+end
+
 function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
     # get input dimensions
     nobsa, na = size(A)
@@ -43,40 +48,15 @@ function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
     out
 end
 
-function row_kron{S,T}(A::AbstractMatrix{S}, B::AbstractMatrix{T})
-    nobsa, na = size(A)
-    nobsb, nb = size(B)
-    out = Array(promote_type(S, T), nobsa, na*nb)
-    row_kron!(A, B, out)
-    out
-end
+function row_kron!(A::SparseMatrixCSC, B::SparseMatrixCSC, out::SparseMatrixCSC)
+    colptr = out.colptr
+    rowval = out.rowval
+    nzval = out.nzval
 
-function row_kron{S,T}(A::SparseMatrixCSC{S}, B::SparseMatrixCSC{T})
-    nobsa, na = size(A)
-    nobsb, nb = size(B)
-
-    # get number of non-zeros in out
-    acounts = zeros(Int, nobsa)
-    @inbounds for col in 1:na, ptr in A.colptr[col]:(A.colptr[col+1]-1)
-        acounts[A.rowval[ptr]] += 1
-    end
-
-    bcounts = zeros(Int, nobsa)
-    @inbounds for col in 1:nb, ptr in B.colptr[col]:(B.colptr[col+1]-1)
-        bcounts[B.rowval[ptr]] += 1
-    end
-
-    k = 0
-    @inbounds @simd for _r in 1:nobsa
-        k += acounts[_r]*bcounts[_r]
-    end
-
+    na = size(A, 2)
+    nb = size(B, 2)
     av = A.nzval
     bv = B.nzval
-
-    colptr = zeros(Int, na*nb+1)
-    rowval = zeros(Int, k)
-    nzval = zeros(promote_type(S, T), k)
 
     colptr[1] = 1
     ck = 1  # running total for colptr
@@ -112,7 +92,76 @@ function row_kron{S,T}(A::SparseMatrixCSC{S}, B::SparseMatrixCSC{T})
 
     end
 
-    SparseMatrixCSC(nobsa, na*nb, colptr, rowval, nzval)
+    out
+end
+
+function row_kron!{T}(A::AbstractMatrix{T}, B::SparseMatrixCSC, out::SparseMatrixCSC)
+    colptr = out.colptr
+    rowval = out.rowval
+    nzval = out.nzval
+    my_zero = zero(T)
+
+    na = size(A, 2)
+    nb = size(B, 2)
+    br = B.rowval
+    bv = B.nzval
+
+    colptr[1] = 1
+    ck = 1  # running total for colptr
+    rv_ix = 0  # which entry of rowval and nzval should be filled
+    c_ix = 1 # which entry of colptr should be filled
+
+    @inbounds for i in 1:na  # columns of a
+        ix_b = 1
+        for j in 2:nb+1  # columns of b
+            b_end = B.colptr[j]
+
+            while ix_b < b_end  # rows
+                row = br[ix_b]
+                if A[row, i] != my_zero
+                    nzval[rv_ix+=1] = A[row, i] * bv[ix_b]
+                    rowval[rv_ix] = row
+                    ck += 1
+                end
+                ix_b += 1
+            end
+            colptr[c_ix+=1] = ck
+        end
+    end
+    out
+end
+
+
+function row_kron!{T}(A::SparseMatrixCSC, B::AbstractMatrix{T}, out::SparseMatrixCSC)
+    colptr = out.colptr
+    rowval = out.rowval
+    nzval = out.nzval
+    my_zero = zero(T)
+
+    na = size(A, 2)
+    nb = size(B, 2)
+    ar = A.rowval
+    av = A.nzval
+
+    colptr[1] = 1
+    ck = 1  # running total for colptr
+    rv_ix = 0  # which entry of rowval and nzval should be filled
+    c_ix = 1 # which entry of colptr should be filled
+
+    @inbounds for i in 1:na  # columns of a
+        for j in 1:nb  # columns of b
+            for ptr in A.colptr[i]:(A.colptr[i+1]-1)  # rows
+                row = ar[ptr]
+                if B[row, j] != my_zero
+                    nzval[rv_ix+=1] = av[ptr] * B[row, j]
+                    rowval[rv_ix] = row
+                    ck += 1
+                end
+            end
+            colptr[c_ix+=1] = ck
+        end
+    end
+    out
 end
 
 # ckronxi.m -- DONE
@@ -455,3 +504,82 @@ function _check_order(N::Int, order::Matrix)
 
     error("invalid order argument. Should have $N columns")
 end
+
+function _check_cdprodx(b::Array, c, ind::AbstractArray{Int})
+    # input verification
+    nrow = size(b[1], 1)
+    for _b in b[2:end]
+        @assert size(_b, 1) == nrow "Must have same # of rows"
+    end
+
+    crow = size(c, 1)
+    ncol = *([size(_b, 2) for _b in b]...)
+    @assert ncol == crow "nrows in c must be product of cols in b"
+
+    _ind_min, _ind_max = extrema(ind)
+    @assert _ind_min > 0 && _ind_max <= length(b) "ind not conformable"
+    nrow
+end
+
+function _nnz_per_row{T}(A::Matrix{T})
+    counts = zeros(Int, size(A, 1))
+    my_zero = zero(T)
+    @inbounds for col in 1:size(A, 2), row in 1:size(A, 1)
+        if A[row, col] != my_zero
+            counts[row] += 1
+        end
+    end
+    counts
+end
+
+function _nnz_per_row{T}(A::SparseMatrixCSC{T})
+    counts = zeros(Int, size(A, 1))
+    @inbounds for col in 1:size(A, 2), ptr in A.colptr[col]:(A.colptr[col+1]-1)
+        counts[A.rowval[ptr]] += 1
+    end
+    counts
+end
+
+function _row_kron_sparse_out_nnz(A, B)
+    # get number of non-zeros in out
+    acounts = _nnz_per_row(A)
+    bcounts = _nnz_per_row(B)
+    k = 0
+    @inbounds @simd for _r in 1:size(A, 1)
+        k += acounts[_r]*bcounts[_r]
+    end
+    k
+end
+
+function _allocate_row_kron_out{T,S}(::Type{SparseMatrixCSC},
+                                     A::AbstractMatrix{T},
+                                     B::AbstractMatrix{S})
+    nobsa, na = size(A)
+    nobsb, nb = size(B)
+    k = _row_kron_sparse_out_nnz(A, B)
+    SparseMatrixCSC(nobsa, na*nb,
+        ones(Int, na*nb+1),          # colptr
+        Array(Int, k),                # rowval
+        Array(promote_type(S, T), k)  # nzval
+    )
+end
+
+function _allocate_row_kron_out{T,S}(::Type{Matrix},
+                                     A::AbstractMatrix{T},
+                                     B::AbstractMatrix{S})
+    nobsa, na = size(A)
+    nobsb, nb = size(B)
+    Array(promote_type(S, T), nobsa, na*nb)
+end
+
+_allocate_row_kron_out(A::SparseMatrixCSC, B::SparseMatrixCSC) =
+    _allocate_row_kron_out(SparseMatrixCSC, A, B)
+
+_allocate_row_kron_out(A::AbstractMatrix, B::SparseMatrixCSC) =
+    _allocate_row_kron_out(SparseMatrixCSC, A, B)
+
+_allocate_row_kron_out(A::SparseMatrixCSC, B::AbstractMatrix) =
+    _allocate_row_kron_out(SparseMatrixCSC, A, B)
+
+_allocate_row_kron_out(A::AbstractMatrix, B::AbstractMatrix) =
+    _allocate_row_kron_out(Matrix, A, B)

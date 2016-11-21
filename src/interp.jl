@@ -131,7 +131,7 @@ function funeval(c, bs::BasisMatrix{Tensor},
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
 
-    f = zeros(eltype(c), nx, size(c, 2), kk)  # 100
+    f = Array(eltype(c), nx, size(c, 2), kk)  # 100
 
     for i=1:kk
         f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
@@ -145,7 +145,7 @@ function funeval(c, bs::BasisMatrix{Direct},
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
     order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
 
-    f = zeros(eltype(c), size(bs.vals[1], 1), size(c, 2), kk)  # 116
+    f = Array(eltype(c), size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i=1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
@@ -157,7 +157,7 @@ function funeval(c, bs::BasisMatrix{Expanded},
                  order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval3
     nx = size(bs.vals[1], 1)
     kk = size(order, 1)
-    f = zeros(promote_type(eltype(c), eltype(bs.vals[1])), nx, size(c, 2), kk)
+    f = Array(promote_type(eltype(c), eltype(bs.vals[1])), nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
         ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)

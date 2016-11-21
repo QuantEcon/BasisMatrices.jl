@@ -22,7 +22,7 @@
         @test full(row_kron(s12, s1)) == row_kron(full(s12), full(s1))
         @test full(row_kron(s12, s12)) == row_kron(full(s12), full(s12))
 
-        Base.zero(::Type{ASCIIString}) = ""
+        Base.zero(::Type{String}) = ""
 
         s1 = SplineSparse(1,2, 2, ["a", "b", "c", "d"], [1, 1])
         s2 = SplineSparse(1,3, 3, map(string, 1:6), [1, 1])

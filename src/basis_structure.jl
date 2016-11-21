@@ -92,7 +92,7 @@ Do common transformations to all constructor of `BasisMatrix`
 ##### Arguments
 
 - `N::Int`: The number of dimensions in the corresponding `Basis`
-- `x::Array`: The points for which the `BasisMatrix` should be
+- `x::AbstractArray`: The points for which the `BasisMatrix` should be
 constructed
 - `order::Array{Int}`: The order of evaluation for each dimension of the basis
 
@@ -106,7 +106,7 @@ specifications, gives the derivative order along all `N` dimensions
 derivative order along each dimension
 - `numbases::Matrix{Int}`: A `1 × N` matrix specifying the total number of
 distinct derivative orders along each dimension
-- `x::Array`: The properly transformed points at which to evaluate
+- `x::AbstractArray`: The properly transformed points at which to evaluate
 the basis
 
 """
@@ -227,7 +227,7 @@ end
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
 function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
-                              x::Array=nodes(basis)[1], order=0)
+                           x::AbstractArray=nodes(basis)[1], order=0)
 
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     # 76-77
@@ -265,14 +265,15 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
 end
 
 function BasisMatrix(basis::Basis, ::Expanded,
-                        x::Array=nodes(basis)[1], order=0)  # funbasex
+                     x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
     # create direct form, then convert to expanded
     bsd = BasisMatrix(basis, Direct(), x, order)
     convert(Expanded, bsd, bsd.order)
 end
 
-function BasisMatrix{N,BF,T}(basis::Basis{N,BF}, ::Tensor,
-                                x::Vector{Vector{T}}=nodes(basis)[2], order=0)
+function BasisMatrix{N,BF,TV<:AbstractVector}(basis::Basis{N,BF}, ::Tensor,
+    x::AbstractVector{TV}=nodes(basis)[2], order=0)
+    
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
     out_format = Tensor()

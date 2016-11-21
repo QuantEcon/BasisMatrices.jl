@@ -119,6 +119,15 @@ end
             have = BasisMatrices.cdprodx(b, c)
 
             @test maxabs(want - have) < 1e-12
+
+            # test RowKron object
+            rk = RowKron(b...)
+            @test maxabs(want - rk*c) < 1e-12
+
+            # now test transpose
+            c2 = rand(size(rk, 1))
+            want2 = full_b'c2
+            @test maxabs(want2 - Base.At_mul_B(rk, c2)) < 1e-12
         end
     end
 end

@@ -65,7 +65,7 @@ import Compat
 export BasisFamily, Cheb, Lin, Spline, Basis,
        BasisParams, ChebParams, LinParams, SplineParams,
        AbstractBasisMatrixRep, Tensor, Expanded, Direct,
-       BasisMatrix, Interpoland, SplineSparse
+       BasisMatrix, Interpoland, SplineSparse, RowKron
 
 # functions
 export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,

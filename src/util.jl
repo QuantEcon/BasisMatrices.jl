@@ -1,6 +1,7 @@
 # ---------------- #
 # Helper functions #
 # ---------------- #
+import Base: *
 
 # ckronx.m -- DONE
 function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
@@ -183,67 +184,78 @@ function ckronxi(b::Array, c, ind=1:length(b))
     reshape(z, mm, size(c, 2))  # 39
 end
 
-# cdprodx.c
-function cdprodx!{T<:AbstractArray}(out::T, b::Array, c::T,
-                                    ind::AbstractArray{Int})
-    # put B in desired order
-    B = [b[_] for _ in ind]
-    _is_sparse = [issparse(_) for _ in B]
-    _last_sparse = _is_sparse[end]
+immutable RowKron{T<:Tuple}
+    B::T
+end
 
-    nrow = size(B[1], 1)
-    Nb = length(ind)
-    d = Array(Float64, nrow, Nb)
-    d[:, 1] = 1.0
+function RowKron(B::AbstractMatrix...)
+    nrow = map(_ -> size(_, 1), B)
+    if any(_ -> _ != nrow[1], nrow)
+        msg = "All matrices must have the same number of rows"
+        throw(DimensionMismatch(msg))
+    end
+    RowKron(B)
+end
 
-    n_col_B = [size(_, 2) for _ in B]
-    cur_col_B = copy(n_col_B) + 1
+Base.length(rk::RowKron) = length(rk.B)
+@generated Base.eltype{T}(::RowKron{T}) =
+    reduce(promote_type, map(eltype, T.parameters))
 
-    # simplify notation
-    ccol = size(c, 2)
-    Bend = B[end]
+Base.issparse(rk::RowKron) = map(issparse, rk.B)
 
-    @inbounds for i in 1:size(c, 1)  # loop over rows of c
-        if cur_col_B[end] > n_col_B[end]
-            cur_col_B[end] = 1
-            j = Nb
-            while j > 1
-                j -= 1
-                cur_col_B[j] += 1
-                cur_col_B[j] <= n_col_B[j] && break
-                cur_col_B[j] = 1
-            end
+function Base.size(rk::RowKron, i::Int)
+    if i == 1
+        size(rk.B[1], 1)
+    elseif i == 2
+        prod(map(_ -> size(_, 2), rk.B))
+    else
+        1
+    end
+end
 
-            for col_d in j+1:Nb
-                _j = col_d - 1
-                _col_j = cur_col_B[_j]
-                this_B = B[_j]
+Base.size(rk::RowKron) = (size(rk, 1), size(rk, 2))
 
-                if _is_sparse[_j]
-                    d[:, col_d] = 0.0
+sizes(rk::RowKron, i::Integer) = collect(map(_ -> size(_, i), rk.B))
 
-                    # fill in non-zero rows
-                    for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
-                        _r = this_B.rowval[ptr]
-                        _v = this_B.nzval[ptr]
-                        d[_r, col_d] = d[_r, col_d-1] * _v
-                    end
+for (f, op, transp) in ((:A_mul_B!, :identity, false),
+                        (:Ac_mul_B!, :ctranspose, true),
+                        (:At_mul_B!, :transpose, true))
 
-                else
-                    @simd for row_d in 1:nrow
-                        d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
-                    end
-                end
-            end
+    # code to do type checks for input args
+    checks = transp ? quote
+        size(out, 1) == size(rk, 2) || throw(DimensionMismatch())
+        size(out, 2) == size(c, 2) || throw(DimensionMismatch())
+        size(c, 1) == size(rk, 1) || throw(DimensionMismatch())
+        fill!(out, 0.0)
+    end : quote
+        size(out, 1) == size(rk, 1) || throw(DimensionMismatch())
+        size(out, 2) == size(c, 2) || throw(DimensionMismatch())
+        size(c, 1) == size(rk, 2) || throw(DimensionMismatch())
+        fill!(out, 0.0)
+    end
 
-        end
+    # the outer loop has a different range depending on transpose
+    outer_loop_range = transp ? :(1:size(out, 1)) : :(1:size(c, 1))
 
-        # now we use d[:, end] .* B[end][:, cur_col_B[end]] .* c[i]
-        ccB = cur_col_B[end]
+    # How we fill `out` is also different...
+    fill_out = transp ? quote
         if _last_sparse
             for ptr in (Bend.colptr[ccB]):(Bend.colptr[ccB+1]-1)
                 _r = Bend.rowval[ptr]
-                _v = Bend.nzval[ptr]
+                _v = $(op)(Bend.nzval[ptr])
+                out[i] += d[_r, end] * _v * c[_r]
+            end
+        else
+            for _r in 1:nrow
+                full_B = d[_r, end] * Bend[_r, ccB]
+                out[i] += full_B * c[_r]
+            end
+        end
+    end : quote
+        if _last_sparse
+            for ptr in (Bend.colptr[ccB]):(Bend.colptr[ccB+1]-1)
+                _r = Bend.rowval[ptr]
+                _v = $(op)(Bend.nzval[ptr])
                 full_B = d[_r, end] * _v
 
                 for _c in 1:ccol
@@ -258,26 +270,106 @@ function cdprodx!{T<:AbstractArray}(out::T, b::Array, c::T,
                 end
             end
         end
-        cur_col_B[end] += 1
     end
+
+    @eval begin
+    function Base.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
+        $(checks)
+
+        _is_sparse = issparse(rk)
+        _last_sparse = _is_sparse[end]
+
+        nrow = size(rk, 1)
+        Nb = length(rk)
+        d = Array(eltype(rk), nrow, Nb)
+        d[:, 1] = one(eltype(rk))
+
+        n_col_B = sizes(rk, 2)
+        cur_col_B = copy(n_col_B) + 1
+
+        # simplify notation
+        ccol = size(c, 2)
+        Bend = rk.B[end]
+
+        for i in $(outer_loop_range)  # loop over rows of out
+            if cur_col_B[end] > n_col_B[end]
+                cur_col_B[end] = 1
+                j = Nb
+                while j > 1
+                    j -= 1
+                    cur_col_B[j] += 1
+                    cur_col_B[j] <= n_col_B[j] && break
+                    cur_col_B[j] = 1
+                end
+
+                for col_d in j+1:Nb
+                    _j = col_d - 1
+                    _col_j = cur_col_B[_j]
+                    this_B = rk.B[_j]
+
+                    if _is_sparse[_j]
+                        d[:, col_d] = 0.0
+
+                        # fill in non-zero rows
+                        for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
+                            _r = this_B.rowval[ptr]
+                            _v = $(op)(this_B.nzval[ptr])
+                            d[_r, col_d] = d[_r, col_d-1] * _v
+                        end
+
+                    else
+                        @simd for row_d in 1:nrow
+                            d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
+                        end
+                    end
+                end
+
+            end
+
+            # now we use d[:, end] .* B[end][:, cur_col_B[end]] .* c[i]
+            ccB = cur_col_B[end]
+
+            $(fill_out)
+
+            cur_col_B[end] += 1
+        end
+        out
+    end
+    end  # @eval begin
+end
+
+function *(rk::RowKron, c::StridedVector)
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
+    A_mul_B!(out, rk, c)
+    out
+end
+
+function *(rk::RowKron, c::StridedMatrix)
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
+    A_mul_B!(out, rk, c)
+    out
+end
+
+function Base.At_mul_B(rk::RowKron, c::StridedVector)
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2))
+    At_mul_B!(out, rk, c)
+    out
+end
+
+function Base.At_mul_B(rk::RowKron, c::StridedMatrix)
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2), size(c, 2))
+    At_mul_B!(out, rk, c)
     out
 end
 
 # cdprodx.m -- DONE
 cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
 
-function cdprodx(b::Array, c::AbstractVector,
+function cdprodx(b::Array, c::StridedVecOrMat,
                  ind::AbstractVector{Int}=1:prod(size(b)))
-    nrow = _check_cdprodx(b, c, ind)
-    out = zeros(Float64, nrow)
-    cdprodx!(out, b, c, ind)
-end
-
-function cdprodx(b::Array, c::AbstractMatrix,
-                 ind::AbstractVector{Int}=1:prod(size(b)))
-    nrow = _check_cdprodx(b, c, ind)
-    out = zeros(Float64, nrow, size(c, 2))
-    cdprodx!(out, b, c, ind)
+    _check_cdprodx(b, c, ind)
+    rk = RowKron(b[ind]...)
+    rk*c
 end
 
 # cckronx.m -- DONE
@@ -484,19 +576,8 @@ function _check_order(N::Int, order::Matrix)
 end
 
 function _check_cdprodx(b::Array, c, ind::AbstractArray{Int})
-    # input verification
-    nrow = size(b[1], 1)
-    for _b in b[2:end]
-        @assert size(_b, 1) == nrow "Must have same # of rows"
-    end
-
-    crow = size(c, 1)
-    ncol = *([size(_b, 2) for _b in b]...)
-    @assert ncol == crow "nrows in c must be product of cols in b"
-
     _ind_min, _ind_max = extrema(ind)
     @assert _ind_min > 0 && _ind_max <= length(b) "ind not conformable"
-    nrow
 end
 
 function _nnz_per_row{T}(A::Matrix{T})

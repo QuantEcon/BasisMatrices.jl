@@ -366,7 +366,7 @@ end
 cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
 
 function cdprodx(b::Array, c::StridedVecOrMat,
-                 ind::AbstractVector{Int}=1:prod(size(b)))
+                 ind::AbstractArray{Int}=1:prod(size(b)))
     _check_cdprodx(b, c, ind)
     rk = RowKron(b[ind]...)
     rk*c

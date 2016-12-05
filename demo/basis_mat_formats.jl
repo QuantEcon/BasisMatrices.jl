@@ -196,7 +196,6 @@ fe1 = bme2.vals[1]*c1
 
 @assert maxabs(fe1 - ft1) < 1e-14
 
-# we could also use the funeval method which would help us avoid building that
-# full row_kron matrix
+# Here the funeval version is identical to the operation from above
 fe2 = funeval(c1, bme2)
 @assert maxabs(fe2 - ft1) < 1e-14

@@ -34,14 +34,19 @@ function n_complete(n::Int, D::Int)
     out
 end
 
-#
-# Vector functions
-#
-@generated function complete_polynomial!{N}(z::Vector, d::Degree{N},
-                                            out::Vector)
+@generated function complete_polynomial!{N,T,Ndim}(z::Array{T,Ndim}, d::Degree{N},
+                                                   out::Array{T,Ndim})
     complete_polynomial_impl!(z, d, out)
 end
 
+function complete_polynomial!{T, Ndim}(z::Array{T,Ndim}, d::Int, out::Array{T,Ndim})
+    complete_polynomial!(z, Degree{d}(), out)::Array{T,Ndim}
+end
+
+
+#
+# Vector functions
+#
 function complete_polynomial_impl!{T,N}(z::Type{Vector{T}}, ::Type{Degree{N}},
                                         out::Type{Vector{T}})
     big_temp = Expr(:(=), Symbol("tmp_$(N+1)"), one(T))
@@ -81,18 +86,9 @@ function complete_polynomial{T}(z::Vector{T}, d::Int)
     complete_polynomial!(z, Degree{d}(), out)::Vector{T}
 end
 
-function complete_polynomial!{T}(z::Vector{T}, d::Int, out::Vector{T})
-    complete_polynomial!(z, Degree{d}(), out)::Vector{T}
-end
-
 #
 # Matrix functions
 #
-@generated function complete_polynomial!{N}(z::Matrix, d::Degree{N},
-                                            out::Matrix)
-    complete_polynomial_impl!(z, d, out)
-end
-
 function complete_polynomial_impl!{T,N}(z::Type{Matrix{T}}, ::Type{Degree{N}},
                                         out::Type{Matrix{T}})
     quote
@@ -127,10 +123,6 @@ end
 function complete_polynomial{T}(z::Matrix{T}, d::Int)
     nobs, nvar = size(z)
     out = Array(T, nobs, n_complete(nvar, d))
-    complete_polynomial!(z, Degree{d}(), out)::Matrix{T}
-end
-
-function complete_polynomial!{T}(z::Matrix{T}, d::Int, out::Matrix{T})
     complete_polynomial!(z, Degree{d}(), out)::Matrix{T}
 end
 

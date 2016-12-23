@@ -34,6 +34,60 @@ function n_complete(n::Int, D::Int)
     out
 end
 
+#
+# Vector functions
+#
+@generated function complete_polynomial!{N}(z::Vector, d::Degree{N},
+                                            out::Vector)
+    complete_polynomial_impl!(z, d, out)
+end
+
+function complete_polynomial_impl!{T,N}(z::Type{Vector{T}}, ::Type{Degree{N}},
+                                        out::Type{Vector{T}})
+    big_temp = Expr(:(=), Symbol("tmp_$(N+1)"), one(T))
+    quote
+        nvar = length(z)
+        if length(out) != (n_complete(nvar, $N))
+            error("z, out not compatible")
+        end
+
+        # reset first column to ones
+        out[1] = one($T)
+
+        ix = 1
+        $big_temp
+        @nloops($N, # number of loops
+                i,  # counter
+                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->(d == 1 ?
+                    (begin
+                         ix += 1
+                         out[ix] = tmp_{d+1}*z[i_d]
+                     end) :
+                    (begin
+                        ix += 1
+                        tmp_d = tmp_{d+1}*z[i_d]
+                        out[ix] = tmp_d
+                    end)),  # preexpr
+                Expr(:block, :nothing)  # bodyexpr
+                )
+        out
+    end
+end
+
+function complete_polynomial{T}(z::Vector{T}, d::Int)
+    nvar = length(z)
+    out = Array(T, n_complete(nvar, d))
+    complete_polynomial!(z, Degree{d}(), out)::Vector{T}
+end
+
+function complete_polynomial!{T}(z::Vector{T}, d::Int, out::Vector{T})
+    complete_polynomial!(z, Degree{d}(), out)::Vector{T}
+end
+
+#
+# Matrix functions
+#
 @generated function complete_polynomial!{N}(z::Matrix, d::Degree{N},
                                             out::Matrix)
     complete_polynomial_impl!(z, d, out)
@@ -52,17 +106,11 @@ function complete_polynomial_impl!{T,N}(z::Type{Matrix{T}}, ::Type{Degree{N}},
             out[i, 1] = one($T)
         end
 
-        # set next nvar columns to input matrix
-        @inbounds for n=2:nvar+1, i=1:nobs
-            out[i, n] = z[i, n-1]
-        end
-
-        ix = nvar+1
+        ix = 1
         @nloops($N, # number of loops
                 i,  # counter
                 d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
-                d->(d == $N ? nothing :
-                    (begin
+                d->((begin
                         ix += 1
                         @inbounds @simd for r=1:nobs
                             tmp = one($T)
@@ -85,3 +133,4 @@ end
 function complete_polynomial!{T}(z::Matrix{T}, d::Int, out::Matrix{T})
     complete_polynomial!(z, Degree{d}(), out)::Matrix{T}
 end
+

@@ -191,3 +191,55 @@ function complete_polynomial_der{T}(z::Vector{T}, d::Int, der::Int)
     return out
 end
 
+#
+# Matrix versions for generating first derivative of basis functions
+#
+function complete_polynomial_impl_der!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{N}},
+                                              ::Type{Derivative{D}}, out::Type{Matrix{T}})
+    coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
+    quote
+        nobs, nvar = size(z)
+        if size(out) != (nobs, n_complete(nvar, $N))
+            error("z, out not compatible")
+        end
+
+        # reset first element to zero
+        @inbounds @simd for r=1:nobs
+            out[r, 1] = zero($T)
+        end
+
+        ix = 1
+        $coeff_top
+        @nloops($N, # number of loops
+                i,  # counter
+                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->((begin
+                        ix += 1
+
+                        # Depending on what i_d is, update variables
+                        if i_d == D
+                            coeff_d = coeff_{d+1} + 1
+                        else
+                            coeff_d = coeff_{d+1}
+                        end
+
+                        @inbounds @simd for r=1:nobs
+                            tmp = one($T)
+                            @nexprs $N-d+1 j->(tmp *= i_{$N-j+1} != D ? z[r, i_{$N-j+1}] : one($T))
+                            out[r, ix] = coeff_d * tmp * z[r, D]^(coeff_d-1)
+                        end
+                    end)),  # preexpr
+                Expr(:block, :nothing)  # bodyexpr
+                )
+        out
+    end
+end
+
+function complete_polynomial_der{T}(z::Matrix{T}, d::Int, der::Int)
+    nobs, nvar = size(z)
+    out = Array(T, nobs, n_complete(nvar, d))
+    complete_polynomial_der!(z, Degree{d}(), Derivative{der}(), out)::Matrix{T}
+
+    return out
+end
+

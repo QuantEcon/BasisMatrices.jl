@@ -70,8 +70,7 @@ export BasisFamily, Cheb, Lin, Spline, Basis,
 # functions
 export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
        derivative_op, row_kron, evaluate, fit!, update_coefs!,
-       complete_polynomial, complete_polynomial!, n_complete,
-       complete_polynomial_der, complete_polynomial_der!
+       complete_polynomial, complete_polynomial!, n_complete
 
 include("util.jl")
 include("spline_sparse.jl")

@@ -133,20 +133,20 @@ end
 #
 # Generating 1st derivative of basis functions
 #
-@generated function complete_polynomial_der!{N,D,T,Ndim}(z::Array{T,Ndim}, d::Degree{N},
-                                                         der::Derivative{D}, out::Array{T,Ndim})
-    complete_polynomial_impl_der!(z, d, der, out)
+@generated function complete_polynomial!{N,D,T,Ndim}(z::Array{T,Ndim}, d::Degree{N},
+                                                     der::Derivative{D}, out::Array{T,Ndim})
+    complete_polynomial_impl!(z, d, der, out)
 end
 
-function complete_polynomial_der!{T, Ndim}(z::Array{T,Ndim}, d::Int, der::Int, out::Array{T,Ndim})
-    complete_polynomial_der!(z, Degree{d}(), Derivative{der}(), out)::Array{T,Ndim}
+function complete_polynomial!{T, Ndim}(z::Array{T,Ndim}, d::Int, der::Int, out::Array{T,Ndim})
+    complete_polynomial!(z, Degree{d}(), Derivative{der}(), out)::Array{T,Ndim}
 end
 
 #
 # Vector versions for generating first derivative of basis functions
 #
-function complete_polynomial_impl_der!{T,N,D}(z::Type{Vector{T}}, ::Type{Degree{N}},
-                                              ::Type{Derivative{D}}, out::Type{Vector{T}})
+function complete_polynomial_impl!{T,N,D}(z::Type{Vector{T}}, ::Type{Degree{N}},
+                                          ::Type{Derivative{D}}, out::Type{Vector{T}})
     notD_top = Expr(:(=), Symbol("notD_$(N+1)"), one(T))
     coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
     quote
@@ -183,10 +183,10 @@ function complete_polynomial_impl_der!{T,N,D}(z::Type{Vector{T}}, ::Type{Degree{
     end
 end
 
-function complete_polynomial_der{T}(z::Vector{T}, d::Int, der::Int)
+function complete_polynomial{T}(z::Vector{T}, d::Int, der::Int)
     nvar = length(z)
     out = Array(T, n_complete(nvar, d))
-    complete_polynomial_der!(z, Degree{d}(), Derivative{der}(), out)::Vector{T}
+    complete_polynomial!(z, Degree{d}(), Derivative{der}(), out)::Vector{T}
 
     return out
 end
@@ -194,8 +194,8 @@ end
 #
 # Matrix versions for generating first derivative of basis functions
 #
-function complete_polynomial_impl_der!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{N}},
-                                              ::Type{Derivative{D}}, out::Type{Matrix{T}})
+function complete_polynomial_impl!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{N}},
+                                          ::Type{Derivative{D}}, out::Type{Matrix{T}})
     coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
     quote
         nobs, nvar = size(z)
@@ -235,10 +235,10 @@ function complete_polynomial_impl_der!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{
     end
 end
 
-function complete_polynomial_der{T}(z::Matrix{T}, d::Int, der::Int)
+function complete_polynomial{T}(z::Matrix{T}, d::Int, der::Int)
     nobs, nvar = size(z)
     out = Array(T, nobs, n_complete(nvar, d))
-    complete_polynomial_der!(z, Degree{d}(), Derivative{der}(), out)::Matrix{T}
+    complete_polynomial!(z, Degree{d}(), Derivative{der}(), out)::Matrix{T}
 
     return out
 end

@@ -15,7 +15,7 @@ Output is a basis matrix. In our example, with `d` set to 2 we would have
 TODO: update docstring to properly give order of terms
 
 ```julia
-out = [ones(size(z,1)) q r s q.*r q.*s r.*s q.^2 q.*r q.*s r.^2 r.*s s.^2]
+out = [ones(size(z,1)) q q.^2 q.*r q.*s r r.^2 r.*s s s.^2]
 ```
 """
 :complete_polynomial

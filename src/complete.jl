@@ -233,7 +233,7 @@ function complete_polynomial_impl!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{N}},
 
                         @inbounds @simd for r=1:nobs
                             tmp = one($T)
-                            @nexprs $N-d+1 j->(tmp *= i_{$N-j+1} != D ? z[r, i_{$N-j+1}] : one($T))
+                            @nexprs $N-d+1 j->(tmp *= ifelse(i_{$N-j+1} != D, z[r, i_{$N-j+1}], one($T)))
                             out[r, ix] = coeff_d * tmp * z[r, D]^(coeff_d-1)
                         end
                     end)),  # preexpr

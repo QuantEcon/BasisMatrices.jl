@@ -64,7 +64,7 @@ end
     X, x12 = BasisMatrices.nodes(basis);
 
     # make up a funciton and evaluate at the nodes
-    f(x1, x2) = cos(x1) ./ exp(x2)
+    f(x1, x2) = cos.(x1) ./ exp.(x2)
     f(X::Matrix) = f(X[:, 1], X[:, 2])
     y = f(X)
 
@@ -74,7 +74,7 @@ end
     # verify that we are actually interpolating -- all heavy lifting in funeval
     # is done by ckronx so this is effectively testing that we wrote that
     # function properly
-    @test maxabs(funeval(c, bs, [0 0]) - y) <= 1e-13
+    @test maximum(abs, funeval(c, bs, [0 0]) - y) <= 1e-13
 end
 
 @testset "test row_kron" begin
@@ -102,9 +102,9 @@ end
 
         want = row_kron(A, B)
 
-        @test maxabs(want - row_kron(full(A), B)) == 0
-        @test maxabs(want - row_kron(A, full(B))) == 0
-        @test maxabs(want - row_kron(full(A), full(B))) == 0
+        @test maximum(abs, want - row_kron(full(A), B)) == 0
+        @test maximum(abs, want - row_kron(A, full(B))) == 0
+        @test maximum(abs, want - row_kron(full(A), full(B))) == 0
     end
 end
 
@@ -118,16 +118,16 @@ end
             want = full_b * c
             have = BasisMatrices.cdprodx(b, c)
 
-            @test maxabs(want - have) < 1e-12
+            @test maximum(abs, want - have) < 1e-12
 
             # test RowKron object
             rk = RowKron(b...)
-            @test maxabs(want - rk*c) < 1e-12
+            @test maximum(abs, want - rk*c) < 1e-12
 
             # now test transpose
             c2 = rand(size(rk, 1))
             want2 = full_b'c2
-            @test maxabs(want2 - Base.At_mul_B(rk, c2)) < 1e-12
+            @test maximum(abs, want2 - Base.At_mul_B(rk, c2)) < 1e-12
         end
     end
 end

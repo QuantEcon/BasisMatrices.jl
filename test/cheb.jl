@@ -1,20 +1,20 @@
 params = BasisMatrices.ChebParams(7, 1e-4, 10.0)
 
 nod = BasisMatrices.nodes(params)
-nod_end = BasisMatrices.nodes(params,1) # extended nodes to endpoints
-nod_l = BasisMatrices.nodes(params,3) # Lobatto nodes
+nod_end = BasisMatrices.nodes(params, 1) # extended nodes to endpoints
+nod_l = BasisMatrices.nodes(params, 3) # Lobatto nodes
 
-function manualeval(x,a,b,n)
+function manualeval(x, a, b, n)
 
     z = 2*(x-a)/(b-a)-1
     m = length(x)
 
-    bas = Array(Float64,m,n)
-    bas[:,1:2] = [ones(m,1) z]
+    bas = Array{Float64}(m, n)
+    bas[:,1:2] = [ones(m, 1) z]
 
     for i in 3:n
 
-        bas[:,i] = 2*z.*bas[:,i-1]-bas[:,i-2]
+        bas[:, i] .= 2.0.*z .* bas[:, i-1] .- bas[:, i-2]
 
     end
 
@@ -22,7 +22,7 @@ function manualeval(x,a,b,n)
 
 end
 
-mB = manualeval(nod,params.a[1],params.b[1],params.n[1])
+mB = manualeval(nod, params.a[1], params.b[1], params.n[1])
 
 #=
 function manualderiv1(a,b,n)
@@ -54,24 +54,24 @@ I = manualint1(nod,params.a[1],params.b[1])
 @testset "test Cheb" begin
 
     @testset "test nodes" begin
-        @test  (nod[1] == params.a[1],nod[end] == params.b[1]) == (false,false)
-        @test_approx_eq_eps [nod_end[1],nod_end[end]] [params.a[1],params.b[1]]  1e-15
-        @test_approx_eq_eps [nod_l[1],nod_l[end]] [params.a[1],params.b[1]]  1e-15
+        @test (nod[1] == params.a[1],nod[end] == params.b[1]) == (false, false)
+        @test ≈([nod_end[1],nod_end[end]], [params.a[1],params.b[1]], atol=1e-15)
+        @test ≈([nod_l[1],nod_l[end]], [params.a[1],params.b[1]], atol=1e-15)
     end
 
     @testset "test derivative/integral" begin
         deriv, params_d = BasisMatrices.derivative_op(params,1)
         int, params_i = BasisMatrices.derivative_op(params,-1)
 
-        @test   params_d.n  ==  params.n[1]-1
-        @test   params_i.n  ==  params.n[1]+1
-        @test_approx_eq_eps [params_d.a,params_d.b] [params.a[1],params.b[1]] 1e-15
-        @test_approx_eq_eps [params_i.a,params_i.b] [params.a[1],params.b[1]] 1e-15
+        @test params_d.n  ==  params.n[1]-1
+        @test params_i.n  ==  params.n[1]+1
+        @test ≈([params_d.a,params_d.b], [params.a[1],params.b[1]], atol=1e-15)
+        @test ≈([params_i.a,params_i.b], [params.a[1],params.b[1]], atol=1e-15)
     end
 
     @testset "test evalbase" begin
-        B = @inferred BasisMatrices.evalbase(params,nod,0,0)
-        @test_approx_eq_eps B mB 1e-14
+        B = @inferred BasisMatrices.evalbase(params, nod, 0, 0)
+        @test ≈(B, mB, atol=1e-14)
     end
 
 end  # testset

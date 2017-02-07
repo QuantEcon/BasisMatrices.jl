@@ -21,8 +21,9 @@ function _get_coefs_deep(basis::Basis,bs::BasisMatrix{Tensor},y)
 end
 
 # convert to expanded and call the method below
-get_coefs(basis::Basis, bs::BasisMatrix{Direct}, y) =
+function get_coefs(basis::Basis, bs::BasisMatrix{Direct}, y)
     get_coefs(basis, convert(Expanded, bs), y)
+end
 
 get_coefs(basis::Basis, bs::BasisMatrix{Expanded}, y) = bs.vals[1] \ y
 
@@ -36,7 +37,7 @@ end
 # get_coefs(::Basis, ::BasisMatrix, ::Array) does almost all the work for
 # these methods
 function funfitxy(basis::Basis, bs::BasisMatrix, y)
-    m = check_funfit(basis, bs, y)
+    check_funfit(basis, bs, y)
     c = get_coefs(basis, bs, y)
     c, bs
 end
@@ -44,11 +45,8 @@ end
 function funfitxy{T}(basis::Basis, x::Vector{Vector{T}}, y)
     m = check_funfit(basis, x, y)
 
-    # additional checks for Array{Any} array
-    mm = prod([size(xi, 1) for xi in x])
+    mm = prod(size(xi, 1) for xi in x)
     mm != m && error("x and y are incompatible")
-
-    # get Tensor form -- most efficient
     bs = BasisMatrix(basis, Tensor(), x, 0)
 
     # get coefs and return
@@ -131,7 +129,7 @@ function funeval(c, bs::BasisMatrix{Tensor},
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
 
-    f = Array(eltype(c), nx, size(c, 2), kk)  # 100
+    f = Array{eltype(c)}(nx, size(c, 2), kk)  # 100
 
     for i=1:kk
         f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
@@ -145,7 +143,7 @@ function funeval(c, bs::BasisMatrix{Direct},
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
     order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
 
-    f = Array(eltype(c), size(bs.vals[1], 1), size(c, 2), kk)  # 116
+    f = Array{eltype(c)}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i=1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
@@ -157,7 +155,7 @@ function funeval(c, bs::BasisMatrix{Expanded},
                  order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval3
     nx = size(bs.vals[1], 1)
     kk = size(order, 1)
-    f = Array(promote_type(eltype(c), eltype(bs.vals[1])), nx, size(c, 2), kk)
+    f = Array{promote_type(eltype(c),eltype(bs.vals[1]))}(nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
         ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)
@@ -176,41 +174,44 @@ end
 # Convenience `Interpoland` type #
 # ------------------------------ #
 
-type Interpoland{T,N,BST<:ABSR}
-    basis::Basis{N}               # the basis -- can't change
-    coefs::Vector{T}              # coefficients -- might change
-    bmat::BasisMatrix{BST}  # BasisMatrix at nodes of `b`
+# typealias LinItp Interpoland{Basis{TypeVar<:Basis,Lin,LinParams},TypeVar(:N, AbstractArray),TypeVar(:N, BasisMatrix{Tensor})}
+
+type Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+    basis::TB  # the basis -- can't change
+    coefs::TC  # coefficients -- might change
+    bmat::TBM  # BasisMatrix at nodes of `b` -- can't change
 end
 
-function Interpoland(basis::Basis, bs::BasisMatrix, y::AbstractVector)
-    c = get_coefs(basis, bs, y)[:, 1]  # get first (only) column as `Vector`
+function Interpoland(basis::Basis, bs::BasisMatrix{Tensor}, y::AbstractArray)
+    c = get_coefs(basis, bs, y)
     Interpoland(basis, c, bs)
 end
 
-function Interpoland(basis::Basis, x::Array, y::AbstractVector)
-    c, bs = funfitxy(basis, x, y)
-    c = c[:, 1]
-    Interpoland(basis, c, bs)
+# compute Tensor form and hand off to method above
+function Interpoland(basis::Basis, y::AbstractArray)
+    bs = BasisMatrix(basis, Tensor())
+    Interpoland(basis, bs, y)
 end
 
-Interpoland(p::BasisParams, x, y) = Interpoland(Basis(p), x, y)
+"""
+Construct an Interpoland from a function.
 
+The function must have the signature `f(::AbstractMatrix)::AbstractArray`
+where each column of the input matrix is a vector of values along a single
+dimension
+"""
 function Interpoland(basis::Basis, f::Function)
-    # TODO: Decide if I want to do this or if I would rather do
-    #       x, xd = nodes(basis); y = f(x); Interpoland(basis, xd, y)
-    #       to get the BasisMatrix in Tensor format (potentially more
-    #       efficient)
-    x = nodes(basis)[1]
+    x, xd = nodes(basis)
     y = f(x)
-    Interpoland(basis, x, y)
+    bs = BasisMatrix(basis, Tensor(), xd)
+    Interpoland(basis, bs, y)
 end
 
 Interpoland(p::BasisParams, f::Function) = Interpoland(Basis(p), f)
 
 # let funeval take care of order and such. This just exists to make it so the
 # user doesn't have to keep track of the coefficient vector
-evaluate(interp::Interpoland, x; order=0) =
-    funeval(interp.coefs, interp.basis, x, order)
+(itp::Interpoland)(x, order=0) = funeval(itp.coefs, itp.basis, x, order)
 
 #=
 TODO: I can add an
@@ -236,4 +237,4 @@ fit!(interp::Interpoland, y::Vector) = update_coefs!(interp, y)
 fit!(interp::Interpoland, f::Function) = update_coefs!(interp, f)
 
 Base.show{T,N,BST<:ABSR}(io::IO, ::Interpoland{T,N,BST}) =
-    print(io, "$N dimensional interpoland with $BST BasisMatrix")
+    print(io, "$N dimensional interpoland")

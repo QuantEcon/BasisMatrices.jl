@@ -34,8 +34,6 @@
             @test ndims(Φ) == 1
         end
 
-        @test  Φ_expanded_1d  ==  Φ_direct_1d
-
     end
 
     @testset "test convert methods" begin

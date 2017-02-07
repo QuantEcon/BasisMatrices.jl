@@ -59,7 +59,7 @@ import Base: ==, *, \
 
 using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 
-import Compat
+using Compat
 
 # types
 export BasisFamily, Cheb, Lin, Spline, Basis,
@@ -89,5 +89,28 @@ include("complete.jl")
 
 # deprecations
 @deprecate BasisStructure BasisMatrix
+
+
+#=
+using BenchmarkTools
+const basis = Basis(ChebParams(50, 0.1, 2.0),
+              ChebParams(50, 0.1, 2.0))
+
+const s = nodes(basis)[1];
+const orders = [0 0; 1 1]
+const B_node = BasisMatrix(basis, Tensor())
+
+N   = size(s,1);
+x   = ones(N,1)*0.2;
+e   = 0.0072;
+
+z_next = 0.5*(s[:,2]-0.15)+0.15+e
+a_next = (1-0.025)*x+z_next
+const g      = hcat(a_next,z_next)
+const h = 0.2 - 0.5*(s[:,1] - x);
+
+
+
+=#
 
 end # module

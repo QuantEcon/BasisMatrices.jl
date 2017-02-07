@@ -20,9 +20,8 @@ end
     the_zeros = zeros(size(z, 1))
     for d in 1:5
         n_comp = n_complete(size(z, 2), d)
-
         # Test basis matrices
-        buff_d = Array(Float64, size(z, 1), n_comp)
+        buff_d = Array{Float64}(size(z, 1), n_comp)
         out_d = complete_polynomial(z, d)
         complete_polynomial!(z, d, buff_d)
         @test size(out_d, 1) == size(z, 1)

@@ -151,7 +151,7 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
                       order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array(TM, numbas, 1)
+    vals = Array{TM}(numbas, 1)
 
     for i=1:numbas
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 63
@@ -168,7 +168,7 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
                       order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array(TM, numbas, 1)
+    vals = Array{TM}(numbas, 1)
 
     for i=1:numbas  # 54
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 55
@@ -189,8 +189,8 @@ end
 function Base.convert{TM}(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
                       order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
-    vals = Array(TM, numbas, d)
-    raw_ind = Array(Vector{Int}, d)
+    vals = Array{TM}(numbas, d)
+    raw_ind = Array{Vector{Int}}(d)
 
     for j=1:d
         for i=1:size(bs.vals, 1)
@@ -216,14 +216,6 @@ end
 # Constructors #
 # ------------ #
 
-# quick function to take order+vals and return expanded form for 1d problems
-function to_expanded(out_order::Matrix{Int}, vals::Array)
-    vals = vals[collect(out_order + (1 - minimum(out_order)))]
-    vals = reshape(vals, size(out_order))
-    BasisMatrix{Expanded,eltype(vals)}(out_order, vals)
-end
-
-
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
 function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
@@ -234,7 +226,7 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
     out_order = minorder
     out_format = Direct()
     val_type = _vals_type(BF)
-    vals = Array(val_type, maximum(numbases), N)
+    vals = Array{val_type}(maximum(numbases), N)
 
     # now do direct form, will convert to expanded later if needed
     for j=1:N
@@ -254,12 +246,6 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
         end
     end
 
-    # if N == 1, switch to expanded format and return it directly
-    # 140-145
-    if N == 1  # 1 dimension
-        return to_expanded(order, vals)
-    end
-
     # construct Direct Format
     BasisMatrix{Direct,val_type}(out_order, vals)
 end
@@ -273,12 +259,12 @@ end
 
 function BasisMatrix{N,BF,TV<:AbstractVector}(basis::Basis{N,BF}, ::Tensor,
     x::AbstractVector{TV}=nodes(basis)[2], order=0)
-    
+
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
     out_format = Tensor()
     val_type = _vals_type(BF)
-    vals = Array(val_type, maximum(numbases), N)
+    vals = Array{val_type}(maximum(numbases), N)
 
     # construct tensor base
     for j=1:N
@@ -298,6 +284,5 @@ function BasisMatrix{N,BF,TV<:AbstractVector}(basis::Basis{N,BF}, ::Tensor,
         end
     end
 
-    N == 1 ? to_expanded(order, vals) :
-             BasisMatrix{Tensor,val_type}(out_order, vals)
+    BasisMatrix{Tensor,val_type}(out_order, vals)
 end

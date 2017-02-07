@@ -24,7 +24,7 @@ c1 = kron(bmt.vals[2], bmt.vals[1]) \ f
 # calling funfitxy with the BasisMatrix instance will use optimized version of
 # that operation that never constructs full kronecker product
 c2 = funfitxy(basis, bmt, f)[1]
-@assert maxabs(c1 - c2) < 1e-14
+@assert maximum(abs, c1 - c2) < 1e-14
 
 ## Direct form
 bmd = BasisMatrix(basis, Direct(), S)
@@ -42,13 +42,13 @@ bmd = BasisMatrix(basis, Direct(), S)
 # Now to get coefficients we will need to compute row_kron(bm.vals[2], bm.vals[2]) \ f
 c3 = row_kron(bmd.vals[2], bmd.vals[1]) \ f
 
-@assert maxabs(c3 - c2) < 1e-14
+@assert maximum(abs, c3 - c2) < 1e-14
 
 # calling funfitxy with the BasisMatrix instance will use optimized version of
 # that operation that never constructs row wise kronecker product
 c4 = funfitxy(basis, bmd, f)[1]
 
-@assert maxabs(c4 - c2) < 1e-14
+@assert maximum(abs, c4 - c2) < 1e-14
 
 ## Expanded form
 bme = BasisMatrix(basis, Expanded(), S)
@@ -56,7 +56,7 @@ bme = BasisMatrix(basis, Expanded(), S)
 # to get coefficients we just need to do bme.vals[1] \ f
 c5 = bme.vals[1] \ f
 
-@assert maxabs(c5 - c2) < 1e-14
+@assert maximum(abs, c5 - c2) < 1e-14
 
 # the reason this worked is that Expanded form computes the fully expanded
 # version of the basis matrix. This means that the expansion down columns and
@@ -65,7 +65,7 @@ c5 = bme.vals[1] \ f
 # the funfitxy method for the Expanded BasisMatrix does exactly this operation
 c6 = funfitxy(basis, bme, f)[1]
 
-@assert maxabs(c6 - c2) < 1e-14
+@assert maximum(abs, c6 - c2) < 1e-14
 
 
 #=
@@ -107,33 +107,33 @@ rows of the matrix argument.
     hcat([repeat(bmt.vals[2][:, i], inner=length(x)) for i in 1:length(y)]...)
     )
 
-@assert maxabs(bmd.vals[1] - Φd1[1]) < 1e-14
-@assert maxabs(bmd.vals[2] - Φd1[2]) < 1e-14
+@assert maximum(abs, bmd.vals[1] - Φd1[1]) < 1e-14
+@assert maximum(abs, bmd.vals[2] - Φd1[2]) < 1e-14
 
 ## Tensor -> expanded
 # we've already seen this one as just kron(bmt.vals[2], bmt.vals[1]) (think
 # about how we computed the c1 and c5)
 Φe1 = kron(bmt.vals[2], bmt.vals[1])
-@assert maxabs(Φe1 - bme.vals[1]) < 1e-14
+@assert maximum(abs, Φe1 - bme.vals[1]) < 1e-14
 
 ## Direct -> Expanded
 # We've also seen that this is row_kron(bmd.vals[2], bmd.vals[1]) (check c3 and
 # c5)
 Φe2 = row_kron(bmd.vals[2], bmd.vals[1])
-@assert maxabs(Φe2 - bme.vals[1]) < 1e-14
+@assert maximum(abs, Φe2 - bme.vals[1]) < 1e-14
 
 # The julia methods `convert(Format, bm, [order])` do these operations for you,
 # but return a fully formed BasisMatrix object instead of just a plain Julia
 # AbstractMatrix subtype
 Φd2 = convert(Direct, bmt)
-@assert maxabs(bmd.vals[1] - Φd2.vals[1]) < 1e-14
-@assert maxabs(bmd.vals[2] - Φd2.vals[2]) < 1e-14
+@assert maximum(abs, bmd.vals[1] - Φd2.vals[1]) < 1e-14
+@assert maximum(abs, bmd.vals[2] - Φd2.vals[2]) < 1e-14
 
 Φe3 = convert(Expanded, bmt)
-@assert maxabs(Φe3.vals[1] - bme.vals[1]) < 1e-14
+@assert maximum(abs, Φe3.vals[1] - bme.vals[1]) < 1e-14
 
 Φe4 = convert(Expanded, bmd)
-@assert maxabs(Φe4.vals[1] - bme.vals[1]) < 1e-14
+@assert maximum(abs, Φe4.vals[1] - bme.vals[1]) < 1e-14
 
 ### Evaluation off nodes
 
@@ -158,19 +158,19 @@ ft1 = kron(bmt.vals[2], Φ1_x2)*c1
 
 # the approximation actually doesn't fit func extremely well, so we will have a
 # relatively loose sense of success in our interpolation
-@assert maxabs(ft1 - f2) < 1.0
+@assert maximum(abs, ft1 - f2) < 1.0
 
 # if we didn't want to form the full `kron` we could have construct a
 # BasisMatrix instance by hand (NOTE: to do this we had to do a relatively ugly
 # thing and allocate vals first, then populate it and we had to pass type
 # params to the BasisMatrix constructor. We can get around this, we just need
 # to be more clever in how we accept arguments to BasisMatrix).
-bmt2_vals = Array(typeof(Φ1_x2), 1, 2)
+bmt2_vals = Array{typeof(Φ1_x2)}(1, 2)
 bmt2_vals[1] = Φ1_x2; bmt2_vals[2] = bmt.vals[2]
 bmt2 = BasisMatrix{Tensor,typeof(Φ1_x2)}([0 0], bmt2_vals)
 ft2 = funeval(c1, bmt2)
 
-@assert maxabs(ft1 - ft2) < 1e-14
+@assert maximum(abs, ft1 - ft2) < 1e-14
 
 ## Using Direct form
 # to use direct form, we first need to construct the expanded grid on x2 and y
@@ -179,12 +179,12 @@ bmd2 = BasisMatrix(basis, Direct(), S2)
 
 # now we can evaluate using row_kron(bmd2.vals[2], bmd2.vals[1]) * c
 fd1 = row_kron(bmd2.vals[2], bmd2.vals[1]) * c1
-@assert maxabs(fd1 - ft1) < 1e-14
+@assert maximum(abs, fd1 - ft1) < 1e-14
 
 # we could also use the funeval method which would help us avoid building that
 # full row_kron matrix
 fd2 = funeval(c1, bmd2)
-@assert maxabs(fd2 - ft1) < 1e-14
+@assert maximum(abs, fd2 - ft1) < 1e-14
 
 
 ## Using Expanded form
@@ -194,8 +194,8 @@ bme2 = BasisMatrix(basis, Expanded(), S2)
 # evaluation now is juse bme2.vals[2] * c
 fe1 = bme2.vals[1]*c1
 
-@assert maxabs(fe1 - ft1) < 1e-14
+@assert maximum(abs, fe1 - ft1) < 1e-14
 
 # Here the funeval version is identical to the operation from above
 fe2 = funeval(c1, bme2)
-@assert maxabs(fe2 - ft1) < 1e-14
+@assert maximum(abs, fe2 - ft1) < 1e-14

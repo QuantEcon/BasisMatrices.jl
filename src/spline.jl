@@ -66,7 +66,7 @@ function derivative_op(p::SplineParams, order=1)
     kk = max(k - 1, k - order - 1)
     augbreaks = vcat(fill(breaks[1], kk), breaks, fill(breaks[end], kk))
 
-    D = Array(SparseMatrixCSC{Float64,Int64}, abs(order), 1)
+    D = Array{SparseMatrixCSC{Float64,Int64}}(abs(order), 1)
 
     if order > 0  # derivative
         temp = k ./ (augbreaks[k+1:n+k-1] - augbreaks[1:n-1])
@@ -131,7 +131,7 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
 
     bas = zeros(m, p.k-minorder+1)  # 73
     bas[:, 1] = 1.0  # 74
-    B = Array(SparseMatrixCSC{Float64,Int}, length(order))  # 75
+    B = Array{SparseMatrixCSC{Float64,Int}}(length(order))  # 75
 
     # 76
     if maximum(order) > 0

@@ -12,7 +12,7 @@ holder = (BasisMatrices.Basis(BasisMatrices.SplineParams(15,-1,1,1),BasisMatrice
     X, x12 = BasisMatrices.nodes(basis)
 
     # function to interpolate
-    f(x1, x2) = cos(x1) ./ exp(x2)
+    f(x1, x2) = cos.(x1) ./ exp.(x2)
     f(X::Matrix) = f(X[:, 1], X[:, 2])
 
     # function at nodes
@@ -23,53 +23,55 @@ holder = (BasisMatrices.Basis(BasisMatrices.SplineParams(15,-1,1,1),BasisMatrice
 
     @testset "test funfitxy for tensor and direct agree on coefs" begin
         c_tensor, bs_tensor = BasisMatrices.funfitxy(basis, x12, y)
-        @test maxabs(c_tensor -  c_direct) <=  1e-12
+        @test maximum(abs, c_tensor -  c_direct) <=  1e-12
     end
 
     @testset "test funfitf" begin
         c = BasisMatrices.funfitf(basis,f)
-        @test maxabs(c -  c_direct) <=  1e-12
+        @test maximum(abs, c -  c_direct) <=  1e-12
     end
 
     @testset "test funeval methods" begin
         # single point
         sp = BasisMatrices.funeval(c_direct,basis,X[5:5,:])[1]
-        @test maxabs(sp -  y[5]) <= 1e-12
+        @test maximum(abs, sp -  y[5]) <= 1e-12
 
         # multiple points using tensor directly
         mp = BasisMatrices.funeval(c_direct,basis,x12)
-        @test maxabs(mp -  y) <=  1e-12
+        @test maximum(abs, mp -  y) <=  1e-12
 
         # multiple points using direct
         mp = BasisMatrices.funeval(c_direct,basis,X)
-        @test maxabs(mp -  y) <=  1e-12
+        @test maximum(abs, mp -  y) <=  1e-12
 
         # multiple points giving basis in direct form
         mpd = BasisMatrices.funeval(c_direct,bs_direct)
-        @test maxabs(mpd -  y) <=  1e-12
+        @test maximum(abs, mpd -  y) <=  1e-12
 
         # multiple points giving basis in expanded form
         Phiexp = Base.convert(BasisMatrices.Expanded,bs_direct)
         mpe = BasisMatrices.funeval(c_direct,Phiexp)
-        @test maxabs(mpe -  y) <=  1e-12
+        @test maximum(abs, mpe -  y) <=  1e-12
 
     end
 
     @testset "test interpoland methods" begin
         # (Basis,BasisMatrix,..)
-        intp1 = BasisMatrices.Interpoland(basis,bs_direct,y)
-        @test maxabs(BasisMatrices.evaluate(intp1,X) - y) <= 1e-12
+        intp1 = BasisMatrices.Interpoland(basis, y)
+        @test maximum(abs, intp1(X) - y) <= 1e-12
+
         # (Basis,Array,..)
-        intp2 = BasisMatrices.Interpoland(basis,X,y)
-        @test maxabs(BasisMatrices.evaluate(intp2,X) - y) <= 1e-12
+        intp2 = BasisMatrices.Interpoland(basis, y)
+        @test maximum(abs, intp2(X) - y) <= 1e-12
+
         # (BasisParams,Function)
-        intp3 = BasisMatrices.Interpoland(basis,f)
-        @test maxabs(BasisMatrices.evaluate(intp3,X) - y) <= 1e-12
+        intp3 = BasisMatrices.Interpoland(basis, f)
+        @test maximum(abs, intp3(X) - y) <= 1e-12
     end
 
     @testset "Printing" begin
         iob = IOBuffer()
-        show(iob, BasisMatrices.Interpoland(basis, bs_direct, y))
+        show(iob, BasisMatrices.Interpoland(basis, y))
     end
 
     # TODO: call show on an interpoland instance to get coverage for writemime

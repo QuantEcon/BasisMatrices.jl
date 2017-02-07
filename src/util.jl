@@ -7,7 +7,7 @@ import Base: *
 function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
                                     ind::AbstractArray{Int}=1:length(b))
     d = length(ind)  # 26
-    n = Array(Int, d)  # 27
+    n = Array{Int}(d)  # 27
     for i=1:d  # 28
         n[i] = size(b[ind[i]], 2)
     end
@@ -281,7 +281,7 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
 
         nrow = size(rk, 1)
         Nb = length(rk)
-        d = Array(eltype(rk), nrow, Nb)
+        d = Array{eltype(rk)}(nrow, Nb)
         d[:, 1] = one(eltype(rk))
 
         n_col_B = sizes(rk, 2)
@@ -618,8 +618,8 @@ function _allocate_row_kron_out{T,S}(::Type{SparseMatrixCSC},
     k = _row_kron_sparse_out_nnz(A, B)
     SparseMatrixCSC(nobsa, na*nb,
         ones(Int, na*nb+1),          # colptr
-        Array(Int, k),                # rowval
-        Array(promote_type(S, T), k)  # nzval
+        Array{Int}(k),                # rowval
+        Array{promote_type(S,T)}(k)  # nzval
     )
 end
 
@@ -628,7 +628,7 @@ function _allocate_row_kron_out{T,S}(::Type{Matrix},
                                      B::AbstractMatrix{S})
     nobsa, na = size(A)
     nobsb, nb = size(B)
-    Array(promote_type(S, T), nobsa, na*nb)
+    Array{promote_type(S,T)}(nobsa, na*nb)
 end
 
 _allocate_row_kron_out(A::SparseMatrixCSC, B::SparseMatrixCSC) =

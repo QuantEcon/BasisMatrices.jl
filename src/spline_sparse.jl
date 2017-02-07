@@ -48,7 +48,7 @@ end
 function Base.findnz{T,I}(s::SplineSparse{T,I})
     nrow = _nrows(s)
     rows = repeat(collect(I, 1:nrow), inner=[s.n_chunks*s.chunk_len])
-    cols = Array(I, length(s.vals))
+    cols = Array{I}(length(s.vals))
 
     for row in 1:nrow
         for chunk in 1:s.n_chunks
@@ -113,8 +113,8 @@ function row_kron{T1,I1,T2,I2}(s1::SplineSparse{T1,I1}, s2::SplineSparse{T2,I2})
     T = promote_type(T1, T2)
     I = promote_type(I1, I2)
 
-    cols = Array(I, N*nrow)
-    vals = Array(T, N*len*nrow)
+    cols = Array{I}(N*nrow)
+    vals = Array{T}(N*len*nrow)
 
     ix = 0
     c_ix = 0
@@ -163,7 +163,7 @@ function *{T,I,T2}(s::SplineSparse{T,I},
     size(s, 2) == size(v, 1) || throw(DimensionMismatch())
 
     out_T = promote_type(T, T2)
-    out = Array(out_T, size(s, 1))
+    out = Array{out_T}(size(s, 1))
     matvec!(out, s, v)
 end
 
@@ -173,7 +173,7 @@ function *{T,I,T2}(s::SplineSparse{T,I},
     size(s, 2) == size(m, 1) || throw(DimensionMismatch())
 
     out_T = promote_type(T, T2)
-    out = Array(out_T, size(s, 1), size(m, 2))
+    out = Array{out_T}(size(s, 1), size(m, 2))
 
     @inbounds for row in 1:size(s, 1)
         vals = zeros(out_T, size(m, 2))

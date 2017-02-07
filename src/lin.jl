@@ -14,7 +14,7 @@ function Basis(::Lin, breaks::Vector, evennum::Int=0)
                 error("breaks must have at least 2 elements")
             end
 
-            if any(abs(diff(diff(breaks))) .> 5e-15*mean(abs(breaks)))
+            if any(abs.(diff(diff(breaks))) .> 5e-15*mean(abs.(breaks)))
                 error("Breaks not evenly spaced")
             end
             evennum = length(breaks)
@@ -36,7 +36,7 @@ function derivative_op(p::LinParams, order::Int=1)
 
     newbreaks = breaks
     n = length(breaks)
-    D = Array(SparseMatrixCSC{Float64, Int}, abs(order))
+    D = Array{SparseMatrixCSC{Float64,Int}}(abs(order))
 
     for i in 1:order
         d = 1./diff(newbreaks)
@@ -133,7 +133,7 @@ function evalbase(::Type{SplineSparse}, p::LinParams,
 
     m, n, ind = _prep_evalbase(p, x)
 
-    z = Array(eltype(x), 2*length(x))
+    z = Array{eltype(x)}(2*length(x))
     for i in 1:length(x)
         ix = 2i
         z[ix] = (x[i]-p.breaks[ind[i]])/(p.breaks[ind[i]+1]-p.breaks[ind[i]])
@@ -147,7 +147,7 @@ evalbase(p::LinParams, x::Union{Real,AbstractArray}=nodes(p), order::Int=0) =
     evalbase(SparseMatrixCSC, p, x, order)
 
 function evalbase(p::LinParams, x, order::AbstractArray{Int})
-    out = Array(SparseMatrixCSC{Float64,Int}, size(order))
+    out = Array{SparseMatrixCSC{Float64,Int}}(size(order))
 
     for I in eachindex(order)
         out[I] = evalbase(p, x, order[I])

@@ -132,7 +132,7 @@ end
 
 function complete_polynomial{T}(z::Matrix{T}, d::Int)
     nobs, nvar = size(z)
-    out = Array(T, nobs, n_complete(nvar, d))
+    out = Array{T}(nobs, n_complete(nvar, d))
     complete_polynomial!(z, Degree{d}(), out)
 
     return out

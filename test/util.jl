@@ -45,17 +45,6 @@ end
     @test_throws DimensionMismatch BasisMatrices._check_order(3, ov)
 end
 
-
-@testset "test BasisMatrices.gridmake" begin
-    # TODO: these tests are very incomplete. They just test that gridmake
-    #       preserves input type
-
-    for T in [Float16, Float32, Float64, Int128, Int16, Int32, Int64, Int8]
-        @test eltype(BasisMatrices.gridmake(rand(T, 2), rand(T, 2))) == T
-    end
-end
-
-
 @testset "test BasisMatrices.ckronx" begin
     # will test by constructing an interpoland, then evaluating at the nodes
     # and verifying that we get back our original function

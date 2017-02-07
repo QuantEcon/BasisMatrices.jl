@@ -213,14 +213,6 @@ Interpoland(p::BasisParams, f::Function) = Interpoland(Basis(p), f)
 # user doesn't have to keep track of the coefficient vector
 (itp::Interpoland)(x, order=0) = funeval(itp.coefs, itp.basis, x, order)
 
-#=
-TODO: I can add an
-
-@stagedfunction evaluate{N,T}(interp::Interpoland{Basis{N}}, x::NTuple{N,Vector{T}})
-
-that calls gridmake for me. Then they can pass points along individual dimensions
-=#
-
 # now, given a new vector of `y` data we construct a new coefficient vector
 function update_coefs!(interp::Interpoland, y::Vector)
     # leverage the BasisMatrix we kept around

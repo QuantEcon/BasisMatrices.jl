@@ -74,6 +74,4 @@ holder = (BasisMatrices.Basis(BasisMatrices.SplineParams(15,-1,1,1),BasisMatrice
         show(iob, BasisMatrices.Interpoland(basis, y))
     end
 
-    # TODO: call show on an interpoland instance to get coverage for writemime
-
 end # testset

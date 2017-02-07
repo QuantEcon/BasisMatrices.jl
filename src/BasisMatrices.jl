@@ -2,8 +2,7 @@ __precompile__()
 
 module BasisMatrices
 
-#=
-TODO: still need to write fund, minterp
+# TODO: still need to write fund, minterp
 
 #=
 Note that each subtype of `BT<:BasisFamily` (with associated `PT<:BasisParam`)

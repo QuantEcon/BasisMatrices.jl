@@ -31,10 +31,10 @@ end
 # dprod.m  - DONE
 function row_kron{S,T}(A::AbstractMatrix{S}, B::AbstractMatrix{T})
     out = _allocate_row_kron_out(A, B)
-    row_kron!(A, B, out)
+    row_kron!(out, A, B)
 end
 
-function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
+function row_kron!(out::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
     # get input dimensions
     nobsa, na = size(A)
     nobsb, nb = size(B)
@@ -49,7 +49,7 @@ function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
     out
 end
 
-function row_kron!(A::SparseMatrixCSC, B::SparseMatrixCSC, out::SparseMatrixCSC)
+function row_kron!(out::SparseMatrixCSC, A::SparseMatrixCSC, B::SparseMatrixCSC)
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -96,7 +96,7 @@ function row_kron!(A::SparseMatrixCSC, B::SparseMatrixCSC, out::SparseMatrixCSC)
     out
 end
 
-function row_kron!{T}(A::AbstractMatrix{T}, B::SparseMatrixCSC, out::SparseMatrixCSC)
+function row_kron!{T}(out::SparseMatrixCSC, A::AbstractMatrix{T}, B::SparseMatrixCSC)
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -133,7 +133,7 @@ function row_kron!{T}(A::AbstractMatrix{T}, B::SparseMatrixCSC, out::SparseMatri
 end
 
 
-function row_kron!{T}(A::SparseMatrixCSC, B::AbstractMatrix{T}, out::SparseMatrixCSC)
+function row_kron!{T}(out::SparseMatrixCSC, A::SparseMatrixCSC, B::AbstractMatrix{T})
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval

@@ -3,14 +3,14 @@
     z = ["x ", "y ", "z "]
 
     want_1 = ["one " "one x " "one y " "one z "]
-    @test complete_polynomial(z', 1) == want_1
+    @test complete_polynomial(reshape(z, 1, length(z)), 1) == want_1
     # Test vector methods to make sure generates same thing as matrix methods
-    @test complete_polynomial(z, 1)' == want_1
+    @test complete_polynomial(z, 1) == want_1[:]
 
     want_2 = ["one " "one x " "one x x " "one x y " "one x z " "one y " "one y y " "one y z " "one z " "one z z "]
-    @test complete_polynomial(z', 2) == want_2
+    @test complete_polynomial(reshape(z, 1, length(z)), 2) == want_2
     # Test vector methods to make sure generates same thing as matrix methods
-    @test complete_polynomial(z, 2)' == want_2
+    @test complete_polynomial(z, 2) == want_2[:]
 
 end
 
@@ -35,8 +35,8 @@ end
 
         # Test derivatives
         buff_der_d = Array(Float64, size(z, 1), n_comp)
-        out_der_d = complete_polynomial_der(z, d, 1)
-        complete_polynomial_der!(z, d, 1, buff_der_d)
+        out_der_d = complete_polynomial(z, d, 1)
+        complete_polynomial!(z, d, 1, buff_der_d)
         @test size(out_der_d, 1) == size(z, 1)
         @test size(out_der_d, 2) == n_comp
         @test all(isapprox.(out_der_d[:, 1], the_zeros))
@@ -67,7 +67,7 @@ end
     # Test vector methods to make sure generates same thing as matrix methods
     @test all(isapprox.(out_2[1, :], complete_polynomial(z2, 2)))
 
-    out_der_2 = complete_polynomial_der(z, 2, 2)
+    out_der_2 = complete_polynomial(z, 2, 2)
     # need to test columns size(z, 2) + 2:end
     @test all(isapprox.(out_der_2[:, 1], all_zero))
     @test all(isapprox.(out_der_2[:, 2], all_zero))

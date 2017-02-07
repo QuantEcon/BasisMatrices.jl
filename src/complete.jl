@@ -148,7 +148,7 @@ end
 end
 
 function complete_polynomial!{T, Ndim}(out::Array{T,Ndim}, z::Array{T,Ndim}, d::Int, der::Int)
-    complete_polynomial!(z, Degree{d}(), Derivative{der}(), out)::Array{T,Ndim}
+    complete_polynomial!(out, z, Degree{d}(), Derivative{der}())::Array{T,Ndim}
 
     return out
 end

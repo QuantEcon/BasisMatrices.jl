@@ -23,7 +23,7 @@ end
         # Test basis matrices
         buff_d = Array{Float64}(size(z, 1), n_comp)
         out_d = complete_polynomial(z, d)
-        complete_polynomial!(z, d, buff_d)
+        complete_polynomial!(buff_d, z, d)
         @test size(out_d, 1) == size(z, 1)
         @test size(out_d, 2) == n_comp
         @test all(isapprox.(out_d[:, 1], the_ones))
@@ -35,7 +35,7 @@ end
         # Test derivatives
         buff_der_d = Array(Float64, size(z, 1), n_comp)
         out_der_d = complete_polynomial(z, d, 1)
-        complete_polynomial!(z, d, 1, buff_der_d)
+        complete_polynomial!(buff_der_d, z, d, 1)
         @test size(out_der_d, 1) == size(z, 1)
         @test size(out_der_d, 2) == n_comp
         @test all(isapprox.(out_der_d[:, 1], the_zeros))

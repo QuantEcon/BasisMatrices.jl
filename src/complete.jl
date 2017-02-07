@@ -12,11 +12,18 @@ should be `z = [q r s]`
 
 Output is a basis matrix. In our example, with `d` set to 2 we would have
 
-TODO: update docstring to properly give order of terms
-
 ```julia
 out = [ones(size(z,1)) q q.^2 q.*r q.*s r r.^2 r.*s s s.^2]
 ```
+
+TODO:
+  * Currently a bit more code repetition than is desireable. It would be
+    nice to cut down on the repetition between the `complete_polynomial`
+    functions
+  * Mutating arguments are currently last... Change them to first
+  * Current algorithm for computing derivatives is kind of slow -- Is
+    there any obvious ways to improve this?
+
 """
 :complete_polynomial
 
@@ -55,7 +62,7 @@ end
 #
 function complete_polynomial_impl!{T,N}(z::Type{Vector{T}}, ::Type{Degree{N}},
                                         out::Type{Vector{T}})
-    big_temp = Expr(:(=), Symbol("tmp_$(N+1)"), one(T))
+    outer_temp = Expr(:(=), Symbol("tmp_$(N+1)"), one(T))
     quote
         nvar = length(z)
         if length(out) != (n_complete(nvar, $N))
@@ -66,16 +73,11 @@ function complete_polynomial_impl!{T,N}(z::Type{Vector{T}}, ::Type{Degree{N}},
         out[1] = one($T)
 
         ix = 1
-        $big_temp
+        $outer_temp
         @nloops($N, # number of loops
                 i,  # counter
                 d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
-                d->(d == 1 ?
-                    (begin
-                         ix += 1
-                         out[ix] = tmp_{d+1}*z[i_d]
-                     end) :
-                    (begin
+                d->((begin
                         ix += 1
                         tmp_d = tmp_{d+1}*z[i_d]
                         out[ix] = tmp_d
@@ -225,11 +227,7 @@ function complete_polynomial_impl!{T,N,D}(z::Type{Matrix{T}}, ::Type{Degree{N}},
                         ix += 1
 
                         # Depending on what i_d is, update variables
-                        if i_d == D
-                            coeff_d = coeff_{d+1} + 1
-                        else
-                            coeff_d = coeff_{d+1}
-                        end
+                        coeff_d = ifelse(i_d == D, coeff_{d+1} + 1, coeff_{d+1})
 
                         @inbounds @simd for r=1:nobs
                             tmp = one($T)

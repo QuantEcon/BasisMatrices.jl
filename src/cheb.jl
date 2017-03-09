@@ -2,14 +2,34 @@
 # Chebyshev Basis #
 # --------------- #
 
-function Basis(::Cheb, n::Int, a::Real, b::Real)  # chebdef
-    n <= 0 && error("n must be positive")
-    a >= b && error("left endpoint (a) must be less than right end point (b)")
-    Basis(Cheb(), n, a, b, ChebParams(n, a, b))
+immutable Cheb <: BasisFamily end
+
+type ChebParams{T} <: BasisParams
+    n::Int
+    a::T
+    b::T
+
+    function ChebParams{T}(n::Int, a::T, b::T)
+        n <= 0 && error("n must be positive")
+        a >= b && error("left endpoint (a) must be less than right end point (b)")
+        new{T}(n, a, b)
+    end
 end
 
-# define methods for ChepParams type
-Basis(p::ChebParams) = Basis(Cheb(), p.n, p.a, p.b)
+
+ChebParams{T}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
+
+family(::ChebParams) = Cheb
+family_name(::ChebParams) = "Cheb"
+Base.min(cp::ChebParams) = cp.a
+Base.max(cp::ChebParams) = cp.b
+Base.length(cp::ChebParams) = cp.n
+
+function Base.show(io::IO, p::ChebParams)
+    m = string("Chebyshev interpoland parameters with ",
+               "$(p.n) basis functions from $(p.a), $(p.b)")
+    print(io, m)
+end
 
 function nodes(p::ChebParams, ::Type{Val{0}})
     s = (p.b-p.a) / 2  # 21
@@ -142,7 +162,7 @@ function evalbasex!{T<:Number}(out::Matrix{Float64}, z::AbstractVector{T},
         throw(DimensionMismatch("z must be same size as x"))
     end
 
-    # TODO: for julia 0.6+ we can do z .= _unscale.(p, x)
+    # Note: for julia 0.6+ we can do z .= _unscale.(p, x)
     z .= _unscale.([p], x)
     m = length(z)
 

@@ -16,13 +16,11 @@ Output is a basis matrix. In our example, with `d` set to 2 we would have
 out = [ones(size(z,1)) q q.^2 q.*r q.*s r r.^2 r.*s s s.^2]
 ```
 
-TODO:
-  * Currently a bit more code repetition than is desireable. It would be
-    nice to cut down on the repetition between the `complete_polynomial`
-    functions
-  * Mutating arguments are currently last... Change them to first
-  * Current algorithm for computing derivatives is kind of slow -- Is
-    there any obvious ways to improve this?
+TODO: Currently a bit more code repetition than is desireable. It would be
+      nice to cut down on the repetition between the `complete_polynomial`
+      functions
+TODO: Current algorithm for computing derivatives is kind of slow -- Is
+      there any obvious ways to improve this?
 
 """
 :complete_polynomial
@@ -249,4 +247,3 @@ function complete_polynomial{T}(z::Matrix{T}, d::Int, der::Int)
 
     return out
 end
-

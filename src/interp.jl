@@ -54,6 +54,16 @@ function funfitxy{T}(basis::Basis, x::Vector{Vector{T}}, y)
     c, bs
 end
 
+# use tensor form
+function funfitxy(basis::Basis, x::TensorX, y)
+    # check input sizes
+    m = check_funfit(basis, x, y)
+
+    bs = BasisMatrix(basis, Tensor(), x, 0)
+    c = get_coefs(basis, bs, y)
+    c, bs
+end
+
 function funfitxy(basis::Basis, x, y)
     # check input sizes
     m = check_funfit(basis, x, y)
@@ -92,7 +102,7 @@ funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
 funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
     funeval(c, basis, reshape(x, 1, N), order)[1]
 
-function funeval{N,T}(c, basis::Basis{N}, x::Vector{Vector{T}}, order=0)
+function funeval{N}(c, basis::Basis{N}, x::TensorX, order=0)
     # check inputs
     size(x, 1) == N ||  error("x must have d=$N elements")
     order =_check_order(N, order)

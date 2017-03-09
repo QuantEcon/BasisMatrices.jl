@@ -36,16 +36,22 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
        derivative_op, row_kron, evaluate, fit!, update_coefs!,
        complete_polynomial, complete_polynomial!, n_complete
 
+#re-exports
+export gridmake, gridmake!, ckron
+
+abstract BasisFamily
+abstract BasisParams
+typealias TensorX Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}
+
 include("util.jl")
 include("spline_sparse.jl")
+include("cheb.jl")
+include("lin.jl")
+include("spline.jl")
 include("basis.jl")
 include("basis_structure.jl")
 include("interp.jl")
 
-# include the rest of the Julian API
-include("cheb.jl")
-include("spline.jl")
-include("lin.jl")
 
 # include comlpete
 include("complete.jl")

@@ -1,13 +1,13 @@
 @testset "Test Linear Basis" begin
 
-    bas1 = BasisMatrices.Basis(BasisMatrices.Lin(), [0.0, 4.0], 5)
+    bas1 = BasisMatrices.Basis(LinParams([0.0, 4.0], 5))
 
     @testset "test type" begin
-        bas2 = BasisMatrices.Basis(BasisMatrices.Lin(), [0.0, 2.0, 4.0], 5)
+        bas2 = BasisMatrices.Basis(LinParams([0.0, 2.0, 4.0], 5))
         @test  bas1.params[1].breaks  ==  [0.0, 1.0, 2.0, 3.0, 4.0]
         @test  bas2.params[1].evennum  ==  3
-        @test_throws ErrorException BasisMatrices.Basis(BasisMatrices.Lin(), [0.0], 5)
-        @test_throws ErrorException BasisMatrices.Basis(BasisMatrices.Lin(), [0.0, 1.5, 4.0], 5)
+        @test_throws ErrorException BasisMatrices.Basis(LinParams([0.0], 5))
+        @test_throws ErrorException BasisMatrices.Basis(LinParams([0.0, 1.5, 4.0], 5))
     end
 
     @testset "test constructor" begin

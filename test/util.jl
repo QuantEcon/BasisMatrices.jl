@@ -48,9 +48,9 @@ end
 @testset "test BasisMatrices.ckronx" begin
     # will test by constructing an interpoland, then evaluating at the nodes
     # and verifying that we get back our original function
-    basis = BasisMatrices.Basis(BasisMatrices.Basis(BasisMatrices.Spline(), [-1.0, 1.0], 13, 3),
-                           BasisMatrices.Basis(BasisMatrices.Spline(), [-5.0, 3.0], 18, 3))
-    X, x12 = BasisMatrices.nodes(basis);
+    basis = Basis(Basis(Spline(), 13, -1.0, 1.0, 3),
+                  Basis(Spline(), 18, -5.0, 3.0, 3))
+    X, x12 = nodes(basis);
 
     # make up a funciton and evaluate at the nodes
     f(x1, x2) = cos.(x1) ./ exp.(x2)
@@ -58,7 +58,7 @@ end
     y = f(X)
 
     # fit the interpoland in Tensor form (tensor b/c using x12)
-    c, bs = BasisMatrices.funfitxy(basis, x12, y);
+    c, bs = funfitxy(basis, x12, y);
 
     # verify that we are actually interpolating -- all heavy lifting in funeval
     # is done by ckronx so this is effectively testing that we wrote that

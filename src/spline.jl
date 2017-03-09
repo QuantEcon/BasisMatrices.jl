@@ -2,33 +2,55 @@
 # B-Spline Basis #
 # -------------- #
 
-# constructor to accept spline params arguments, do some pre-processing
-function Basis(::Spline, breaks::Vector, evennum::Int, k::Int)
-    # error handling
-    k < 0 && error("spline order must be positive")
-    length(breaks) < 2 && error("Must have at least two breakpoints")
-    any(diff(breaks) .< 0) && error("Breakpoints must be non-decreasing")
+immutable Spline <: BasisFamily end
 
-    if evennum == 0  # 43
-        if length(breaks) == 2  # 44
-            evennum = 2
-        end
-    else
-        if length(breaks) == 2
-            breaks = linspace(breaks[1], breaks[2], evennum)
+type SplineParams{T<:AbstractVector} <: BasisParams
+    breaks::T
+    evennum::Int
+    k::Int
+
+    # constructor to accept spline params arguments, do some pre-processing
+    function SplineParams{T}(breaks::T, evennum::Int, k::Int)
+        # error handling
+        k < 0 && error("spline order must be positive")
+        length(breaks) < 2 && error("Must have at least two breakpoints")
+        any(diff(breaks) .< 0) && error("Breakpoints must be non-decreasing")
+
+        if evennum == 0  # 43
+            if length(breaks) == 2  # 44
+                evennum = 2
+            end
         else
-            error("Breakpoint squence must contain 2 values when evennum > 0")
+            if length(breaks) == 2
+                breaks = linspace(breaks[1], breaks[2], evennum)
+            else
+                error("Breakpoint squence must contain 2 values when evennum > 0")
+            end
         end
+        new{T}(breaks, evennum, k)
     end
 
-    n = length(breaks) + k - 1
-    a = breaks[1]
-    b = breaks[end]
-    Basis(Spline(), n, a, b, SplineParams(breaks, evennum, k))
 end
 
-# define methods for SplineParams type
-Basis(p::SplineParams) = Basis(Spline(), p.breaks, p.evennum, p.k)
+SplineParams{T<:AbstractVector}(breaks::T, evennum::Int, k::Int) =
+    SplineParams{T}(breaks, evennum, k)
+
+# constructor to take a, b, n and form linspace for breaks
+SplineParams(n::Int, a::Real, b::Real, k::Int=3) =
+    SplineParams(linspace(a, b, n), 0, k)
+
+family(::SplineParams) = Spline
+family_name(::SplineParams) = "Spline"
+Base.min(p::SplineParams) = minimum(p.breaks)
+Base.max(p::SplineParams) = maximum(p.breaks)
+Base.length(p::SplineParams) = length(p.breaks) + p.k - 1
+
+function Base.show(io::IO, p::SplineParams)
+    m = string("$(p.k) order spline interpoland parameters from ",
+               "$(p.breaks[1]), $(p.breaks[end])")
+    print(io, m)
+end
+
 
 """
 Construct interpolation nodes, given SplineParams

@@ -24,10 +24,12 @@ import Base: ==, *, \
 using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 
 using Compat
+using Combinatorics: with_replacement_combinations
+using Iterators: product
 
 # types
-export BasisFamily, Cheb, Lin, Spline, Basis,
-       BasisParams, ChebParams, LinParams, SplineParams,
+export BasisFamily, Cheb, Lin, Spline, Basis, Smolyak,
+       BasisParams, ChebParams, LinParams, SplineParams, SmolyakParams,
        AbstractBasisMatrixRep, Tensor, Expanded, Direct,
        BasisMatrix, Interpoland, SplineSparse, RowKron
 
@@ -42,6 +44,7 @@ export gridmake, gridmake!, ckron
 abstract BasisFamily
 abstract BasisParams
 typealias TensorX Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}
+typealias IntSorV Union{Int, AbstractVector{Int}}
 
 include("util.jl")
 include("spline_sparse.jl")
@@ -53,8 +56,9 @@ include("basis_structure.jl")
 include("interp.jl")
 
 
-# include comlpete
+# include comlpete and smolyak
 include("complete.jl")
+include("smolyak.jl")
 
 
 # deprecations

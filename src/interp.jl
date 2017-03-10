@@ -158,7 +158,8 @@ function funeval(c, bs::BasisMatrix{Direct},
     for i=1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
     end
-    return squeeze_trail(f)
+    f
+    # return squeeze_trail(f)
 end
 
 function funeval(c, bs::BasisMatrix{Expanded},

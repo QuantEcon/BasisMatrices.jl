@@ -57,14 +57,12 @@
 
     @testset "test internal tools" begin
         ## test _vals_type
-        for (TF, TM) in [(Spline, SparseMatrixCSC{Float64,Int}),
-                         (Lin, SparseMatrixCSC{Float64,Int}),
-                         (Cheb, Matrix{Float64})]
-            @test BasisMatrices._vals_type(TF) == TM
-            @test BasisMatrices._vals_type(TF()) == TM
+        for (TP, TM) in [(SplineParams{Vector{Float64}}, SparseMatrixCSC{Float64,Int}),
+                         (SplineParams{Vector{Float32}}, SparseMatrixCSC{Float32,Int}),
+                         (LinParams{AbstractVector{Float16}}, SparseMatrixCSC{Float16,Int}),
+                         (ChebParams{Complex{Float64}}, Matrix{Complex{Float64}})]
+            @test TM == @inferred BasisMatrices._vals_type(TP)
         end
-
-        @test BasisMatrices._vals_type(BasisMatrices.BasisFamily) == AbstractMatrix{Float64}
 
         ## test _checkx
         # create test data

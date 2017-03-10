@@ -18,6 +18,7 @@ end
 
 
 ChebParams{T}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
+ChebParams{T<:Integer}(n::Int, a::T, b::T) = ChebParams(n, Float64(a), Float64(b))
 
 family(::ChebParams) = Cheb
 family_name(::ChebParams) = "Cheb"

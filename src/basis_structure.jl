@@ -282,7 +282,7 @@ function BasisMatrix{N,BT}(basis::Basis{N,BT}, ::Tensor,
     vals = Array{val_type}(maximum(numbases), N)
 
     # construct tensor base
-    for j=1:N
+    for j in 1:N
         # 113-117
         if (m > 1)
             orderj = unique(order[:, j])
@@ -292,10 +292,9 @@ function BasisMatrix{N,BT}(basis::Basis{N,BT}, ::Tensor,
 
         #118-122
         if length(orderj) == 1
-            vals[1, j] = evalbase(basis.params[j], x[j], orderj)
+            vals[1, j] = evalbase(basis.params[j], x[j], orderj[1])
         else
-            vals[orderj-minorder[j]+1, j] = evalbase(basis[:params][j], x[j],
-                                                     orderj)
+            vals[orderj-minorder[j]+1, j] = evalbase(basis.params[j], x[j], orderj)
         end
     end
 

@@ -128,9 +128,7 @@ function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
     funeval(c, bs, order)
 end
 
-# funeval1
-function funeval(c, bs::BasisMatrix{Tensor},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))
+function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # funeval1
     kk, d = size(order)  # 95
 
     # 98 reverse the order of evaluation: B(d) × B(d-1) × ⋯ × B(1)
@@ -139,34 +137,31 @@ function funeval(c, bs::BasisMatrix{Tensor},
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
 
-    f = Array{eltype(c)}(nx, size(c, 2), kk)  # 100
+    f = Array{eltype(c),3}(nx, size(c, 2), kk)  # 100
 
     for i=1:kk
         f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
     end
-    return squeeze_trail(f)
+    f
 end
 
-function funeval(c, bs::BasisMatrix{Direct},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval2
+function _funeval(c, bs::BasisMatrix{Direct}, order::AbstractMatrix{Int})  # funeval2
     kk, d = size(order)  # 95
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
     order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
 
-    f = Array{eltype(c)}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
+    f = Array{eltype(c),3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i=1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
     end
     f
-    # return squeeze_trail(f)
 end
 
-function funeval(c, bs::BasisMatrix{Expanded},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval3
+function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # funeval3
     nx = size(bs.vals[1], 1)
     kk = size(order, 1)
-    f = Array{promote_type(eltype(c),eltype(bs.vals[1]))}(nx, size(c, 2), kk)
+    f = Array{promote_type(eltype(c),eltype(bs.vals[1])),3}(nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
         ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)
@@ -178,7 +173,26 @@ function funeval(c, bs::BasisMatrix{Expanded},
         f[:, :, i] = bs.vals[ind]*c  # 154
     end
 
-    return squeeze_trail(f)
+    f
+end
+
+function funeval(c::AbstractVector, bs::BasisMatrix, order::AbstractMatrix{Int})
+    _funeval(c, bs, order)[:, 1, :]
+end
+
+function funeval(c::AbstractMatrix, bs::BasisMatrix, order::AbstractMatrix{Int})
+    _funeval(c, bs, order)
+end
+
+# default method
+function funeval(c::AbstractVector, bs::BasisMatrix,
+                 order::Vector{Int}=fill(0, size(bs.order, 2)))
+    _funeval(c, bs, reshape(order, 1, length(order)))[:, 1, 1]
+end
+
+function funeval(c::AbstractMatrix, bs::BasisMatrix,
+                 order::Vector{Int}=fill(1, size(bs.order, 2)))
+    _funeval(c, bs, reshape(order, 1, length(order)))[:, :, 1]
 end
 
 # ------------------------------ #

@@ -406,21 +406,6 @@ function nodeunif(n::Array, a::Array, b::Array)
     return gridmake(xcoord...), xcoord
 end
 
-function squeeze_trail(x::Array)
-    sz = size(x)
-    squeezers = Int[]
-    n = length(sz)
-    for i=n:-1:1
-        if sz[i] == 1
-            push!(squeezers, i)
-        else
-            break
-        end
-    end
-    squeeze(x, tuple(squeezers...))
-end
-
-
 function lookup(table::Vector, x::Real, p::Int=0)
     ind = searchsortedfirst(table, x) - 1
     m = length(table)

@@ -44,6 +44,10 @@ family_name(::SplineParams) = "Spline"
 Base.min(p::SplineParams) = minimum(p.breaks)
 Base.max(p::SplineParams) = maximum(p.breaks)
 Base.length(p::SplineParams) = length(p.breaks) + p.k - 1
+function Base.eltype{T}(::SplineParams{T})
+    elT = eltype(T)
+    elT <: Integer ? Float64 : eltype(T)
+end
 
 function Base.show(io::IO, p::SplineParams)
     m = string("$(p.k) order spline interpoland parameters from ",
@@ -151,9 +155,11 @@ at each point in `x`. Each column represents a basis function.
 function evalbase(p::SplineParams, x, order::AbstractVector{Int})
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
-    bas = zeros(m, p.k-minorder+1)  # 73
-    bas[:, 1] = 1.0  # 74
-    B = Array{SparseMatrixCSC{Float64,Int}}(length(order))  # 75
+    max_repeat = p.k-minorder + 1
+    T = eltype(p)
+    bas = zeros(T, m, max_repeat)  # 73
+    bas[:, 1] = one(T)  # 74
+    B = Array{SparseMatrixCSC{T,Int}}(length(order))  # 75
 
     # 76
     if maximum(order) > 0
@@ -165,8 +171,14 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
         I = derivative_op(p, minorder)[1]
     end
 
-    for j=1:p.k-minorder  # 78
-        for jj=j:-1:1  # 79
+    # We know what the rows and columns will be, we just compute them once and
+    # then extract chunks as we need them.
+    # note: I benchmarked and the version with collect was (2-5)x faster
+    r = repmat(collect(1:m), max_repeat)
+    c = (minorder-p.k:0)' .+ ind
+
+    for j in 1:p.k-minorder  # 78
+        for jj in j:-1:1  # 79
             for ix in eachindex(ind)
                 b0 = augbreaks[ind[ix]+jj-j]  # 80
                 b1 = augbreaks[ind[ix]+jj]  # 81
@@ -180,12 +192,8 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
         ii = findfirst(order, p.k-j)  # 87
         if ii > 0
             # Put values in appropriate columns of a sparse matrix
-            r = collect(1:m)''  # 91
-            r = r[:, fill(1, p.k-order[ii]+1)]  # 91
-            c = collect((order[ii] - p.k:0) - (order[ii] - minorder))'  # 92
-            c = c[fill(1, m), :] + ind[:, fill(1, p.k-order[ii] + 1)]  # 93
-            B[ii] = sparse(vec(r), vec(c), vec(bas[:, 1:p.k-order[ii]+1]),
-                           m, n-order[ii])
+            N = m * (p.k-order[ii]+1)
+            B[ii] = sparse(view(r, 1:N), view(c, 1:N), view(bas, 1:N), m, n-order[ii])
 
             # 96-100
             if order[ii] > 0

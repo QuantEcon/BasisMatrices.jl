@@ -199,8 +199,6 @@ end
 # Convenience `Interpoland` type #
 # ------------------------------ #
 
-# typealias LinItp Interpoland{Basis{TypeVar<:Basis,Lin,LinParams},TypeVar(:N, AbstractArray),TypeVar(:N, BasisMatrix{Tensor})}
-
 type Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
     basis::TB  # the basis -- can't change
     coefs::TC  # coefficients -- might change

@@ -29,7 +29,7 @@ immutable SmolyakParams{Tmu<:IntSorV,T} <: BasisParams
 
     # internal fields
     inds::Vector{Vector{Int}}  # Smolyak indices
-    pinds::Matrix{Int64}  # Polynomial indicespinds::Matrix{Int64}
+    pinds::Matrix{Int64}  # Polynomial indices
 
     function SmolyakParams{Tmu,T}(d::Int, mu::Tmu, a::Vector{T}, b::Vector{T})
         d < 2 && error("You passed d = $d. d must be greater than 1")
@@ -54,13 +54,13 @@ function SmolyakParams{Tmu,T}(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
 end
 
 # add methods to helper routines from other files
-smol_inds(sp::SmolyakParams) = smol_inds(sp.d, sp.mu)
+smol_inds(sp::SmolyakParams) = sp.inds
 
-function poly_inds(sp::SmolyakParams, inds::Vector{Vector{Int}}=smol_inds(sp))
+function poly_inds(sp::SmolyakParams, inds::Vector{Vector{Int}}=sp.inds)
     poly_inds(sp.d, sp.mu, inds)
 end
 
-function build_grid(sp::SmolyakParams, inds::Vector{Vector{Int}}=smol_inds(sp))
+function build_grid(sp::SmolyakParams, inds::Vector{Vector{Int}}=sp.inds)
     build_grid(sp.d, sp.mu, inds)
 end
 

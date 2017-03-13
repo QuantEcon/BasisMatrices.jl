@@ -20,8 +20,14 @@ end
 ChebParams{T}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
 ChebParams{T<:Integer}(n::Int, a::T, b::T) = ChebParams(n, Float64(a), Float64(b))
 
-family(::ChebParams) = Cheb
-family_name(::ChebParams) = "Cheb"
+## BasisParams interface
+# define these methods on the type, the instance version is defined over
+# BasisParams
+family{T<:ChebParams}(::Type{T}) = Cheb
+family_name{T<:ChebParams}(::Type{T}) = "Cheb"
+@generated Base.eltype{T<:ChebParams}(::Type{T}) = T.parameters[1]
+
+# methods that only make sense for instances
 Base.min(cp::ChebParams) = cp.a
 Base.max(cp::ChebParams) = cp.b
 Base.length(cp::ChebParams) = cp.n

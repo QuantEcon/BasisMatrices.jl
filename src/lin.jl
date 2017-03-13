@@ -35,8 +35,15 @@ LinParams{T<:AbstractVector}(breaks::T, evennum::Int=0) = LinParams{T}(breaks, e
 LinParams(n::Int, a::Real, b::Real) =
     LinParams(linspace(a, b, n), 0)
 
-family(p::LinParams) = Lin
-family_name(p::LinParams) = "Lin"
+## BasisParams interface
+# define these methods on the type, the instance version is defined over
+# BasisParams
+family{T<:LinParams}(::Type{T}) = Lin
+family_name{T<:LinParams}(::Type{T}) = "Lin"
+Base.issparse{T<:LinParams}(::Type{T}) = true
+@generated Base.eltype{T<:LinParams}(::Type{T}) = eltype(T.parameters[1])
+
+# methods that only make sense for instances
 Base.min(p::LinParams) = minimum(p.breaks)
 Base.max(p::LinParams) = maximum(p.breaks)
 Base.length(p::LinParams) = length(p.breaks)
@@ -46,7 +53,6 @@ function Base.show(io::IO, p::LinParams)
                "from $(p.breaks[1]), $(p.breaks[end])")
     print(io, m)
 end
-
 
 nodes(p::LinParams) = p.breaks
 

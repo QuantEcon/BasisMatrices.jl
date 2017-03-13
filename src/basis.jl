@@ -87,6 +87,8 @@ function Base.getindex{N}(basis::Basis{N}, n::Int)
     Basis(basis.params[n])::Basis{1}
 end
 
+_all_sparse{N,TP}(b::Basis{N,TP}) = all(issparse, TP.parameters)
+
 # other AbstractArray like methods for Basis
 Base.length(b::Basis) = prod(length, b.params)
 Base.size(b::Basis, i::Int) = length(b[i])  # uses method on previous line

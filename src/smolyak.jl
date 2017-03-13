@@ -86,14 +86,17 @@ function cube2dom!(out::AbstractMatrix, pts::AbstractMatrix,
 end
 cube2dom(pts::AbstractMatrix, sp::SmolyakParams) = cube2dom(pts, sp.a, sp.b)
 
-# define the BasisParams interface
-family(p::SmolyakParams) = Smolyak
-family_name(p::SmolyakParams) = "Smolyak"
+## BasisParams interface
+# define these methods on the type, the instance version is defined over
+# BasisParams
+family{T<:SmolyakParams}(::Type{T}) = Smolyak
+family_name{T<:SmolyakParams}(::Type{T}) = "Smolyak"
+@generated Base.eltype{T<:SmolyakParams}(::Type{T}) = T.parameters[1]
+
+# methods that only make sense for instances
 Base.min(p::SmolyakParams) = p.a
 Base.max(p::SmolyakParams) = p.b
-Base.eltype{T,Tmu}(::SmolyakParams{T,Tmu}) = T
 Base.ndims(sp::SmolyakParams) = sp.d
-Base.issparse{T<:SmolyakParams}(::Type{T}) = false
 
 function Base.show(io::IO, p::SmolyakParams)
     m = string("Smolyak interpolation parameters in $(p.d) dimensions",

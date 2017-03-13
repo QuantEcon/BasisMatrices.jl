@@ -48,17 +48,26 @@ typealias IntSorV Union{Int, AbstractVector{Int}}
 
 include("util.jl")
 include("spline_sparse.jl")
+
+# include the families
+
+# BasisParams interface
+Base.issparse{T<:BasisParams}(::Type{T}) = false
+Base.ndims(::BasisParams) = 1
+for f in [:family, :family_name, :(Base.issparse), :(Base.eltype)]
+    @eval $(f)(t::BasisParams) = $(f)(typeof(t))
+end
 include("cheb.jl")
 include("lin.jl")
 include("spline.jl")
+include("complete.jl")
+include("smolyak.jl")
+
+
+# include other
 include("basis.jl")
 include("basis_structure.jl")
 include("interp.jl")
-
-
-# include comlpete and smolyak
-include("complete.jl")
-include("smolyak.jl")
 
 
 # deprecations

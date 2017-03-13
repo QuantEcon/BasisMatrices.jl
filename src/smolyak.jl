@@ -21,7 +21,7 @@ include("smol_util.jl")
 
 immutable Smolyak <: BasisFamily end
 
-immutable SmolyakParams{Tmu<:IntSorV,T} <: BasisParams
+immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     d::Int
     mu::Tmu
     a::Vector{T}
@@ -31,7 +31,7 @@ immutable SmolyakParams{Tmu<:IntSorV,T} <: BasisParams
     inds::Vector{Vector{Int}}  # Smolyak indices
     pinds::Matrix{Int64}  # Polynomial indices
 
-    function SmolyakParams{Tmu,T}(d::Int, mu::Tmu, a::Vector{T}, b::Vector{T})
+    function SmolyakParams{T,Tmu}(d::Int, mu::Tmu, a::Vector{T}, b::Vector{T})
         d < 2 && error("You passed d = $d. d must be greater than 1")
         mu < 1 && error("You passed mu = $mu. mu must be greater than 1")
         if length(mu) > 1
@@ -44,13 +44,13 @@ immutable SmolyakParams{Tmu<:IntSorV,T} <: BasisParams
         inds = smol_inds(d, mu)
         pinds = poly_inds(d, mu, inds)
 
-        new{Tmu,T}(d, mu, a, b, inds, pinds)
+        new{T,Tmu}(d, mu, a, b, inds, pinds)
     end
 end
 
-function SmolyakParams{Tmu,T}(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
+function SmolyakParams{T,Tmu}(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
                               b::Vector{T}=fill(1.0, d))
-    SmolyakParams{Tmu,T}(d, mu, a, b)
+    SmolyakParams{T,Tmu}(d, mu, a, b)
 end
 
 # add methods to helper routines from other files
@@ -91,8 +91,9 @@ family(p::SmolyakParams) = Smolyak
 family_name(p::SmolyakParams) = "Smolyak"
 Base.min(p::SmolyakParams) = p.a
 Base.max(p::SmolyakParams) = p.b
-Base.eltype{Tmu,T}(::SmolyakParams{Tmu,T}) = T
+Base.eltype{T,Tmu}(::SmolyakParams{T,Tmu}) = T
 Base.ndims(sp::SmolyakParams) = sp.d
+Base.issparse{T<:SmolyakParams}(::Type{T}) = false
 
 function Base.show(io::IO, p::SmolyakParams)
     m = string("Smolyak interpolation parameters in $(p.d) dimensions",
@@ -101,7 +102,7 @@ function Base.show(io::IO, p::SmolyakParams)
 end
 
 # TODO: fix this
-function Base.length(sp::SmolyakParams{Int})
+function Base.length{T}(sp::SmolyakParams{T,Int})
     d, mu = sp.d, sp.mu
     mu == 1 ? 2d - 1 :
     mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ):

@@ -111,3 +111,20 @@ function nodes(b::Basis)  # funnode method
     x = gridmake(xcoord...)
     return x, xcoord
 end
+
+@generated function bmat_type{N,TP,TO}(::Type{TO}, bm::Basis{N,TP})
+    if N == 1
+        out = bmat_type(TO, TP.parameters[1])
+    else
+        out = bmat_type(TO, TP.parameters[1])
+        for this_TP in TP.parameters[2:end]
+            this_out = bmat_type(TO, this_TP)
+            if this_out != out
+                out = AbstractMatrix{promote_type(eltype(out), eltype(this_out))}
+            end
+        end
+    end
+    return :($out)
+end
+
+bmat_type(b::Basis) = bmat_type(Void, bm)

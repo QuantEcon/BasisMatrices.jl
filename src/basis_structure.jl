@@ -126,30 +126,6 @@ function check_basis_structure(N::Int, x, order)
     return m, order, minorder, numbases, x
 end
 
-# give the type of the `vals` field based on the family type parameter of the
-# corresponding basis. `Spline` and `Lin` use sparse, `Cheb` uses dense
-# a hybrid must fall back to a generic AbstractMatrix{Float64}
-_vals_type{T}(::Type{SplineParams{T}}) = SparseMatrixCSC{eltype(T),Int}
-_vals_type{T}(::Type{LinParams{T}}) = SparseMatrixCSC{eltype(T),Int}
-_vals_type{T}(::Type{ChebParams{T}}) = Matrix{T}
-
-# conveneince method so we can pass an instance of the type also
-_vals_type{TF<:BasisParams}(::TF) = _vals_type(TF)
-
-@generated function _vals_type{N,TP}(bm::Basis{N,TP})
-    if N == 1
-        out = _vals_type(TP.parameters[1])
-    else
-        out = _vals_type(TP.parameters[1])
-        for this_TP in TP.parameters[2:end]
-            this_out = _vals_type(this_TP)
-            if this_out != out
-                out = AbstractMatrix{promote_type(eltype(out), eltype(this_out))}
-            end
-        end
-    end
-    return :($out)
-end
 
 # --------------- #
 # convert methods #
@@ -228,19 +204,15 @@ end
 # Constructors #
 # ------------ #
 
-# method to allow passing types instead of instances of ABSR
-BasisMatrix{BST<:ABSR}(basis, ::Type{BST}, x, order=0) = BasisMatrix(basis, BST(), x, order)
-
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
-function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
-                           x::AbstractArray=nodes(basis)[1], order=0)
-
+function BasisMatrix{N,BF,T2}(::Type{T2}, basis::Basis{N,BF}, ::Direct,
+                              x::AbstractArray=nodes(basis)[1], order=0)
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     # 76-77
     out_order = minorder
     out_format = Direct()
-    val_type = _vals_type(basis)
+    val_type = bmat_type(T2, basis)
     vals = Array{val_type}(maximum(numbases), N)
 
     # now do direct form, will convert to expanded later if needed
@@ -254,10 +226,10 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
 
         #131-135
         if length(orderj) == 1
-            vals[1, j] = evalbase(basis.params[j], x[:, j], orderj[1])
+            vals[1, j] = evalbase(T2, basis.params[j], x[:, j], orderj[1])
         else
             vals[orderj-minorder[j]+1, j] =
-                evalbase(basis.params[j], x[:, j], orderj)
+                evalbase(T2, basis.params[j], x[:, j], orderj)
         end
     end
 
@@ -265,20 +237,20 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
     BasisMatrix{Direct,val_type}(out_order, vals)
 end
 
-function BasisMatrix(basis::Basis, ::Expanded,
-                     x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
+function BasisMatrix{T2}(::Type{T2}, basis::Basis, ::Expanded,
+                         x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
     # create direct form, then convert to expanded
-    bsd = BasisMatrix(basis, Direct(), x, order)
+    bsd = BasisMatrix(T2, basis, Direct(), x, order)
     convert(Expanded, bsd, bsd.order)
 end
 
-function BasisMatrix{N,BT}(basis::Basis{N,BT}, ::Tensor,
-                           x::TensorX=nodes(basis)[2], order=0)
+function BasisMatrix{N,BT,T2}(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
+                              x::TensorX=nodes(basis)[2], order=0)
 
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
     out_format = Tensor()
-    val_type = _vals_type(basis)
+    val_type = bmat_type(T2, basis)
     vals = Array{val_type}(maximum(numbases), N)
 
     # construct tensor base
@@ -292,11 +264,31 @@ function BasisMatrix{N,BT}(basis::Basis{N,BT}, ::Tensor,
 
         #118-122
         if length(orderj) == 1
-            vals[1, j] = evalbase(basis.params[j], x[j], orderj[1])
+            vals[1, j] = evalbase(T2, basis.params[j], x[j], orderj[1])
         else
-            vals[orderj-minorder[j]+1, j] = evalbase(basis.params[j], x[j], orderj)
+            vals[orderj-minorder[j]+1, j] = evalbase(T2, basis.params[j], x[j], orderj)
         end
     end
 
     BasisMatrix{Tensor,val_type}(out_order, vals)
+end
+
+
+# method to allow passing types instead of instances of ABSR
+function BasisMatrix{BST<:ABSR,T2}(::Type{T2}, basis, ::Type{BST}, x, order=0)
+    BasisMatrix(T2, basis, BST(), x, order)
+end
+
+# default method without intermediate types
+function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::TBM, x, order=0)
+    BasisMatrix(Void, basis, tbm, x, order)
+end
+
+function BasisMatrix{BST<:ABSR}(basis, ::Type{BST}, x, order=0)
+    BasisMatrix(basis, BST(), x, order)
+end
+
+# method without x
+function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::Union{Type{TBM},TBM})
+    BasisMatrix(Void, basis, tbm)
 end

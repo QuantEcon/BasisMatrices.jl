@@ -189,11 +189,17 @@ immutable RowKron{T<:Tuple}
 end
 
 function RowKron(B::AbstractMatrix...)
-    nrow = map(_ -> size(_, 1), B)
-    if any(_ -> _ != nrow[1], nrow)
+    nrow = map(x -> size(x, 1), B)
+    if any(x -> x != nrow[1], nrow)
         msg = "All matrices must have the same number of rows"
         throw(DimensionMismatch(msg))
     end
+
+    if any(x -> !(isa(x, AbstractMatrix)), B)
+        msg = "All arguments to RowKron must be matrices"
+        throw(ArgumentError(msg))
+    end
+
     RowKron(B)
 end
 

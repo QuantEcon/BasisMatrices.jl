@@ -38,18 +38,4 @@
     @testset "test evalbase with linear B spline" begin
         @test all(manualbase .== base)
     end
-
-    @testset "augbreaks" begin
-        breaks = cumsum(rand(10))
-
-        for k in 1:10
-            for minorder in 0:k-1
-                n_rep = k - minorder
-                augbreaks = vcat(fill(breaks[1], n_rep), breaks, fill(breaks[end], n_rep))
-                ab = Augbreaks(breaks, k, minorder)
-                @test ab == augbreaks
-            end
-        end
-
-    end
 end

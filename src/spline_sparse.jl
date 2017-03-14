@@ -142,7 +142,7 @@ function row_kron{T1,I1,T2,I2}(s1::SplineSparse{T1,I1}, s2::SplineSparse{T2,I2})
 
 end
 
-function matvec!{T}(out::AbstractVector{T}, s::SplineSparse, v::AbstractVector)
+function Base.A_mul_B!{T}(out::AbstractVector{T}, s::SplineSparse, v::AbstractVector)
     @inbounds for row in eachindex(out)
         val = zero(T)
         for chunk in 1:s.n_chunks
@@ -164,9 +164,11 @@ function *{T,I,T2}(s::SplineSparse{T,I},
 
     out_T = promote_type(T, T2)
     out = Array{out_T}(size(s, 1))
-    matvec!(out, s, v)
+    A_mul_B!(out, s, v)
 end
 
+# TODO: define method A_mul_B!(ss::SplineSparse, csc::SparseMatrixCSC)
+# TODO: define method A_mul_B!(ss::SplineSparse, ss2::SplineSparse)
 
 function *{T,I,T2}(s::SplineSparse{T,I},
                              m::AbstractMatrix{T2})

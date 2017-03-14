@@ -143,7 +143,7 @@ function funeval{N}(c, basis::Basis{N}, x::TensorX, order=0)
     order =_check_order(N, order)
 
     # construct tensor form BasisMatrix
-    bs = BasisMatrix(basis, Tensor(), x, order)  # 67
+    bs = BasisMatrix(SplineSparse, basis, Tensor(), x, order)  # 67
 
     # pass of to specialized method below
     funeval(c, bs, order)
@@ -157,7 +157,7 @@ function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
     order =_check_order(N, order)
 
     # construct BasisMatrix in Direct form
-    bs = BasisMatrix(basis, Direct(), x, order)  # 67
+    bs = BasisMatrix(SplineSparse, basis, Direct(), x, order)  # 67
 
     # pass of to specialized method below
     funeval(c, bs, order)

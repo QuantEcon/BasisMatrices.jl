@@ -282,7 +282,7 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
     function Base.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
         $(checks)
 
-        _is_sparse = issparse(rk)
+        _is_sparse = map(x -> isa(x, SparseMatrixCSC), rk.B)
         _last_sparse = _is_sparse[end]
 
         nrow = size(rk, 1)

@@ -4,15 +4,15 @@
 
 # Tensor representation, single function method; calls function that computes coefficients below below
 function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Vector{T})
-    _get_coefs_deep(basis,bs,y)[:,1]
+    _get_coefs_deep(basis, bs, y)[:,1]
 end
 
 # Tensor representation, multiple function method; calls function that computes coefficients below
 function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Matrix{T})
-    _get_coefs_deep(basis,bs,y)
+    _get_coefs_deep(basis, bs, y)
 end
 
-function _get_coefs_deep(basis::Basis,bs::BasisMatrix{Tensor},y)
+function _get_coefs_deep(basis::Basis, bs::BasisMatrix{Tensor}, y)
     if any(bs.order[1, :] .!= 0)
         error("invalid basis structure - first elements must be order 0")
     end
@@ -42,21 +42,8 @@ function funfitxy(basis::Basis, bs::BasisMatrix, y)
     c, bs
 end
 
-function funfitxy{T}(basis::Basis, x::Vector{Vector{T}}, y)
-    m = check_funfit(basis, x, y)
-
-    mm = prod(size(xi, 1) for xi in x)
-    mm != m && error("x and y are incompatible")
-    bs = BasisMatrix(basis, Tensor(), x, 0)
-
-    # get coefs and return
-    c = get_coefs(basis, bs, y)
-    c, bs
-end
-
 # use tensor form
 function funfitxy(basis::Basis, x::TensorX, y)
-    # check input sizes
     m = check_funfit(basis, x, y)
 
     bs = BasisMatrix(basis, Tensor(), x, 0)
@@ -77,9 +64,9 @@ function funfitxy(basis::Basis, x, y)
 end
 
 function funfitf(basis::Basis, f::Function, args...)
-    x = nodes(basis)[1]
-    y = f(x, args...)
-    funfitxy(basis, x, y)[1]
+    X, xn = nodes(basis)
+    y = f(X, args...)
+    funfitxy(basis, xn, y)[1]
 end
 
 # ---------- #

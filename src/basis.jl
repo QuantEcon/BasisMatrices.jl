@@ -127,4 +127,4 @@ end
     return :($out)
 end
 
-bmat_type(b::Basis) = bmat_type(Void, bm)
+bmat_type(b::Basis) = bmat_type(Void, b)

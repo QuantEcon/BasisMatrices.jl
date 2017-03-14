@@ -253,7 +253,7 @@ function evalbase(::Type{SplineSparse}, p::SplineParams, x,
         if ii > 0
             ord = order[ii]
             cols = (ord - p.k) + ind
-            B[ii] = SplineSparse(1, p.k-ord+1, n-ord, vec(bas), cols)
+            B[ii] = SplineSparse{T,Int,1,p.k-ord+1}(n-ord, vec(bas), cols)
         end
     end
     return B

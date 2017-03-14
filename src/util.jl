@@ -378,25 +378,6 @@ function cdprodx(b::Array, c::StridedVecOrMat,
     rk*c
 end
 
-# cckronx.m -- DONE
-cckronx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b * c  # 23
-
-function cckronx(b::Array, c, ind=1:prod(size(b)))
-    d = length(ind)  # 25
-    n = Int[size(b[ind[i]], 2) for i=1:d]  #26-27
-    prod(n) != size(c, 1) && error("b and c are not conformable")  # 28-30
-
-    z = c'  # 31
-    mm = 1  # 32
-    for i=1:d  # 33
-        m = prod(size(z)) / n[i]  # 34
-        z = reshape(z, m, n[i])  # 35
-        z = b[ind[i]] \ z'  # 36
-        mm = mm*size(z, 1)  # 37
-    end  # 38
-    reshape(z, mm, size(c, 2))  # 39
-end
-
 # nodeunif.m -- DONE
 function nodeunif(n::Int, a::Int, b::Int)
     x = linspace(a, b, n)

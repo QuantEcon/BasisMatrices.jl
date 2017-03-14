@@ -165,7 +165,7 @@ function evalbase(::Type{SplineSparse}, p::LinParams,
         z[ix-1] = 1 - z[ix]
     end
 
-    return SplineSparse(1, 2, n, z, ind)
+    return SplineSparse{eltype(x),Int,1,2}(n, z, ind)
 end
 
 evalbase(p::LinParams, x::Union{Real,AbstractArray}=nodes(p), order::Int=0) =

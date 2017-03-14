@@ -73,48 +73,6 @@ end
 # Evaluation #
 # ---------- #
 
-# funeval wants to evaluate at a matrix. As a stop-gap until I find some
-# time, this method makes a scalar x into a 1x1 matrix
-funeval(c, basis::Basis{1}, x::Real, order=0) =
-    funeval(c, basis, fill(x, 1, 1), order)
-
-# when x is a vector and we have a univariate interpoland, we don't want to
-# return just the first element (see next method)
-funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
-    funeval(c, basis, x[:, :], order)
-
-# Here we want only the first element because we have a N>1 dimensional basis
-# and we passed only a 1 dimensional array of points at which to evaluate,
-# meaning we must have passed a single point.
-funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
-    funeval(c, basis, reshape(x, 1, N), order)[1]
-
-function funeval{N}(c, basis::Basis{N}, x::TensorX, order=0)
-    # check inputs
-    size(x, 1) == N ||  error("x must have d=$N elements")
-    order =_check_order(N, order)
-
-    # construct tensor form BasisMatrix
-    bs = BasisMatrix(basis, Tensor(), x, order)  # 67
-
-    # pass of to specialized method below
-    funeval(c, bs, order)
-end
-
-# helper method to construct BasisMatrix{Direct}, then pass to the method
-# below below
-function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
-    # check that inputs are conformable
-    size(x, 2) == N || error("x must have d=$(N) columns")  # 62
-    order =_check_order(N, order)
-
-    # construct BasisMatrix in Direct form
-    bs = BasisMatrix(basis, Direct(), x, order)  # 67
-
-    # pass of to specialized method below
-    funeval(c, bs, order)
-end
-
 function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # funeval1
     kk, d = size(order)  # 95
 
@@ -161,6 +119,48 @@ function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # f
     end
 
     f
+end
+
+# funeval wants to evaluate at a matrix. As a stop-gap until I find some
+# time, this method makes a scalar x into a 1x1 matrix
+funeval(c, basis::Basis{1}, x::Real, order=0) =
+    funeval(c, basis, fill(x, 1, 1), order)
+
+# when x is a vector and we have a univariate interpoland, we don't want to
+# return just the first element (see next method)
+funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
+    funeval(c, basis, x[:, :], order)
+
+# Here we want only the first element because we have a N>1 dimensional basis
+# and we passed only a 1 dimensional array of points at which to evaluate,
+# meaning we must have passed a single point.
+funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
+    funeval(c, basis, reshape(x, 1, N), order)[1]
+
+function funeval{N}(c, basis::Basis{N}, x::TensorX, order=0)
+    # check inputs
+    size(x, 1) == N ||  error("x must have d=$N elements")
+    order =_check_order(N, order)
+
+    # construct tensor form BasisMatrix
+    bs = BasisMatrix(basis, Tensor(), x, order)  # 67
+
+    # pass of to specialized method below
+    funeval(c, bs, order)
+end
+
+# helper method to construct BasisMatrix{Direct}, then pass to the method
+# below below
+function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
+    # check that inputs are conformable
+    size(x, 2) == N || error("x must have d=$(N) columns")  # 62
+    order =_check_order(N, order)
+
+    # construct BasisMatrix in Direct form
+    bs = BasisMatrix(basis, Direct(), x, order)  # 67
+
+    # pass of to specialized method below
+    funeval(c, bs, order)
 end
 
 function funeval(c::AbstractVector, bs::BasisMatrix, order::AbstractMatrix{Int})

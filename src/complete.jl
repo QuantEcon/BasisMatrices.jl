@@ -2,8 +2,6 @@
 # Stuff to construct basis matrices of complete polynomials #
 # --------------------------------------------------------- #
 
-using Base.Cartesian: @nloops, @nexprs
-
 """
 Construct basis matrix for complete polynomial of degree `d`, given
 input data `z`. `z` is assumed to be the degree 1 realization of each

@@ -20,6 +20,7 @@ nodes(::PT)
 =#
 
 import Base: ==, *, \
+using Base.Cartesian
 
 using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 

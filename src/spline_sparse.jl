@@ -100,10 +100,10 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     # new number of chunks the length chunks times the number of chunks in
     # first matrix times number of chunks in second matrix
     N = len1*N1*N2
-    
+
     # new chunk length is the chunk length from the second matrix
     len = len2
-    
+
     # T and I are  easy...
     T = promote_type(T1, T2)
     I = promote_type(I1, I2)
@@ -142,8 +142,8 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     end
 end
 
-function Base.A_mul_B!{T,I,N,L,Tout}(out::AbstractVector{Tout}, 
-                                     s::SplineSparse{T,I,N,L}, 
+function Base.A_mul_B!{T,I,N,L,Tout}(out::AbstractVector{Tout},
+                                     s::SplineSparse{T,I,N,L},
                                      v::AbstractVector)
     @inbounds for row in eachindex(out)
         val = zero(Tout)
@@ -210,9 +210,9 @@ function tensor_prod(syms, inds, lens, add_index)
         exprs = []
         for i in 1:lens[1]
             e = Expr(
-                :call, 
-                :(*), 
-                Symbol(syms[1], "_", i), 
+                :call,
+                :(*),
+                Symbol(syms[1], "_", i),
                 tensor_prod(syms[2:end], cat(1, inds,[i-1]), lens[2:end], add_index)
             )
             push!(exprs, e)
@@ -222,7 +222,7 @@ function tensor_prod(syms, inds, lens, add_index)
 end
 
 # if we have all `SplineSparse`s we can special case out = rk*c
-@generated function Base.A_mul_B!(out::StridedVector, 
+@generated function Base.A_mul_B!(out::StridedVector,
                                   rk::RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}},
                                   _c::StridedVector)
     N = length(rk.parameters[1].parameters)
@@ -234,8 +234,8 @@ end
         L = Ls[i]
         iv_sym = Symbol("iv_", i)
         new_ex = [Expr(
-            :(=), 
-            Symbol("v", i, "_", j), 
+            :(=),
+            Symbol("v", i, "_", j),
             :(rk.B[$i].vals[$iv_sym + $(j-1)])
         ) for j in 1:L]
         push!(unpack_Bs_args, new_ex...)
@@ -244,7 +244,7 @@ end
 
     syms = [Symbol("v", i) for i in 1:N]
     prod = tensor_prod(syms, [], Ls, false)
-    
+
     code = quote
         if any(n_chunks(i) != 1 for i in rk.B)
             msg("Only supported for combining univariate bases for now...")
@@ -259,8 +259,7 @@ end
         end
 
         c = reshape(_c, reverse(map(_ -> size(_, 2), rk.B)))
-        fill!(out, zero(eltype(rk)))
-        
+
         @inbounds for row in 1:size(out, 1)
             @nexprs $N j -> i_j = rk.B[j].cols[col_ix(rk.B[j], row, 1)]
             @nexprs $N j -> iv_j = val_ix(rk.B[j], row, 1, 1)
@@ -268,9 +267,7 @@ end
             out[row] = $(prod)
         end
     end
-    
+
     code
 
 end
-
-

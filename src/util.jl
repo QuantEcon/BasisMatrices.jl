@@ -393,7 +393,7 @@ function nodeunif(n::Array, a::Array, b::Array)
     return gridmake(xcoord...), xcoord
 end
 
-function lookup(table::Vector, x::Real, p::Int=0)
+function lookup(table::AbstractVector, x::Real, p::Int=0)
     ind = searchsortedfirst(table, x) - 1
     m = length(table)
 
@@ -432,7 +432,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     # lower enbound adjustment
     numfirst = 1
     t1 = table[1]
-    for i=2:n
+    for i in 2:n
         if table[i] == t1
             numfirst += 1
         else
@@ -444,7 +444,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     tn = table[n]
     if p >= 2
         n -= 1
-        for i=n:-1:1
+        for i in n:-1:1
             if table[i] == tn
                 n -= 1
             else
@@ -462,7 +462,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
                 out[i] = numfirst
             end
         else
-            for i=1:m
+            for i in 1:m
                 if table[1] <= x[i]
                     out[i] = numfirst
                 else
@@ -475,7 +475,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
 
     jlo = 1
 
-    for i=1:m
+    for i in 1:m
         inc = 1
         xi = x[i]
         if xi >= table[jlo]
@@ -527,6 +527,24 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
 
     out
 end
+
+"""
+    lookup(table::AbstractVector, x, p::Int=0)
+
+For a sorted vector `table`, return the index of the _last_ point smaller than
+`x`. `p` specifies endpoint adjustments and takes one of 4 values:
+
+1. `p=0`: no adjustment made
+2. `p=1`: if `x < minimum(table)`, then return `sum(table .== table[1])`
+3. `p=2`: if `x > maximum(table)`, then return `length(table)-sum(table .== table[end])`
+4. `p=3`: do both adjustments 1 and 2
+
+If `p > 3`, the `p=3` case is applied
+
+When `x` is a vector, a vector of integers is returned
+"""
+lookup
+
 
 
 # utility to expand the order input if needed

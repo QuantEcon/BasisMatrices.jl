@@ -137,27 +137,55 @@ funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
 funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
     funeval(c, basis, reshape(x, 1, N), order)[1]
 
-function funeval{N}(c, basis::Basis{N}, x::TensorX, order=0)
+function funeval{N}(c, basis::Basis{N}, x::TensorX, order::Int=0)
     # check inputs
     size(x, 1) == N ||  error("x must have d=$N elements")
-    order =_check_order(N, order)
 
-    # construct tensor form BasisMatrix
-    bs = BasisMatrix(SplineSparse, basis, Tensor(), x, order)  # 67
+    if order != 0
+        msg = string("passing order as integer only allowed for $(order=0).",
+                     " Try calling the version where `order` is a matrix")
+        error(msg)
+    end
 
-    # pass of to specialized method below
-    funeval(c, bs, order)
+    _order = fill(0, 1, N)
+    bs = BasisMatrix(SplineSparse, basis, Tensor(), x, _order)  # 67
+    funeval(c, bs, _order)
 end
 
-# helper method to construct BasisMatrix{Direct}, then pass to the method
-# below below
-function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
+function funeval{N}(c, basis::Basis{N}, x::TensorX, _order::AbstractMatrix)
+    # check inputs
+    size(x, 1) == N ||  error("x must have d=$N elements")
+    order = _check_order(N, _order)
+
+    # construct tensor form
+    bs = BasisMatrix(SparseMatrixCSC, basis, Tensor(), x, order)  # 67
+
+    # pass to specialized method below
+    return funeval(c, bs, order)
+end
+
+function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
+    # check inputs
+    size(x, 2) == N || error("x must have d=$(N) columns")
+
+    if order != 0
+        msg = string("passing order as integer only allowed for $(order=0).",
+                     " Try calling the version where `order` is a matrix")
+        error(msg)
+    end
+
+    _order = fill(0, 1, N)
+    bs = BasisMatrix(SplineSparse, basis, Direct(), x, _order)  # 67
+    funeval(c, bs, _order)
+end
+
+function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, _order::AbstractMatrix)
     # check that inputs are conformable
     size(x, 2) == N || error("x must have d=$(N) columns")  # 62
-    order =_check_order(N, order)
+    order = _check_order(N, _order)
 
-    # construct BasisMatrix in Direct form
-    bs = BasisMatrix(SplineSparse, basis, Direct(), x, order)  # 67
+    # construct BasisMatrix in Direct for
+    bs = BasisMatrix(SparseMatrixCSC, basis, Direct(), x, order)  # 67
 
     # pass of to specialized method below
     funeval(c, bs, order)

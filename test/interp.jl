@@ -2,9 +2,9 @@ cases = ["B-splines","Cheb","Lin"]
 
 # construct basis
 holder = (
-    Basis(SplineParams(15,-1, 1, 1),SplineParams(20,-5, 2, 3)),
-    Basis(ChebParams(15,-1, 1),ChebParams(20,-5, 2)),
-    Basis(LinParams(15,-1, 1),LinParams(20,-5, 2))
+    Basis(SplineParams(25, -1, 1, 1),SplineParams(20, -1, 2, 3)),
+    Basis(ChebParams(25, -1, 1),ChebParams(20, -1, 2)),
+    Basis(LinParams(25, -1, 1),LinParams(20, -1, 2))
 )
 
 @testset for (i, case) in enumerate(cases)
@@ -14,11 +14,12 @@ holder = (
     X, x12 = nodes(basis)
 
     # function to interpolate
-    f(x1, x2) = cos.(x1) ./ exp.(x2)
+    f(x1, x2) = cos.(x2) ./ exp.(x1)
     f(X::Matrix) = f(X[:, 1], X[:, 2])
 
     # function at nodes
     y = f(X)
+    yprime2 = - sin.(X[:, 2]) ./ exp.(X[:, 1])
 
     # benchmark coefficients
     c_direct, bs_direct = funfitxy(basis, X, y)
@@ -54,6 +55,13 @@ holder = (
         Phiexp = Base.convert(Expanded, bs_direct)
         mpe = @inferred funeval(c_direct, Phiexp)
         @test maximum(abs, mpe -  y) <=  1e-12
+
+        # order != 0. Note for Spline err is 7e-5. For Cheb 9e-14 and Lin 2e-1
+        der1 = @inferred funeval(c_direct, basis, X, [0 1])
+        @test maximum(abs, der1 - yprime2) <= 2e-1
+        der2 = @inferred funeval(c_direct, basis, x12, [0 1])
+        @test maximum(abs, der1 - yprime2) <= 2e-1
+        @test maximum(abs, der1 - der2) <= 1e-12
 
     end
 

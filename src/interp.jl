@@ -69,6 +69,13 @@ function funfitf(basis::Basis, f::Function, args...)
     funfitxy(basis, xn, y)[1]
 end
 
+function Base.:\(b::Basis, y::AbstractArray)
+    x123 = nodes(b)[2]
+    funfitxy(b, x123, y)[1]
+end
+
+Base.:\(b::Basis, f::Function) = funfitf(b, f)
+
 # ---------- #
 # Evaluation #
 # ---------- #

@@ -24,6 +24,9 @@ holder = (
     # benchmark coefficients
     c_direct, bs_direct = funfitxy(basis, X, y)
 
+    # this order isn't included bs_direct
+    @test_throws ErrorException funeval(c_direct, convert(Expanded, bs_direct), [0 1])
+
     @testset "test funfitxy for tensor and direct agree on coefs" begin
         c_tensor, bs_tensor = funfitxy(basis, x12, y)
         @test maximum(abs, c_tensor -  c_direct) <=  1e-12
@@ -65,9 +68,26 @@ holder = (
 
     end
 
+    @testset "other funeval methods" begin
+        b1 = basis[1]
+        y1 = sin.(x12[1])
+        c = funfitxy(b1, x12[1], y1)[1]
+        for (i, x) in enumerate(x12[1])
+            @test ≈(y1[i], @inferred(funeval(c, b1, x)), atol=1e-14)
+        end
+
+        for (i, x) in enumerate(x12[1])
+            @test ≈([y1[i], y1[i]], @inferred(funeval([c c], b1, x)), atol=1e-14)
+        end
+
+        @test ≈(y1, @inferred(funeval(c, b1, x12[1])), atol=1e-14)
+        @test ≈([y1 y1], @inferred(funeval([c c], b1, x12[1])), atol=1e-14)
+
+    end
+
     @testset "test interpoland methods" begin
-        # (Basis, BasisMatrix,..)
-        intp1 = Interpoland(basis, y)
+        # (Basis, BasisMatrix, Array)
+        intp1 = Interpoland(basis, BasisMatrix(basis, Tensor()), y)
         @test maximum(abs, intp1(X) - y) <= 1e-12
 
         # (Basis, Array,..)
@@ -83,5 +103,9 @@ holder = (
         iob = IOBuffer()
         show(iob, Interpoland(basis, y))
     end
+
+    # errors
+    @test_throws ErrorException funeval(c_direct, basis, x12, 1)
+    @test_throws ErrorException funeval(c_direct, basis, X, 1)
 
 end # testset

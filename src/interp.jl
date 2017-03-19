@@ -128,21 +128,29 @@ function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # f
     f
 end
 
-# funeval wants to evaluate at a matrix. As a stop-gap until I find some
-# time, this method makes a scalar x into a 1x1 matrix
-funeval(c, basis::Basis{1}, x::Real, order=0) =
-    funeval(c, basis, fill(x, 1, 1), order)
+# 1d basis + x::Number + c::Mat => 1 point, many func ==> out 1d
+funeval(c::AbstractMatrix, basis::Basis{1}, x::Real, order=0) =
+    vec(funeval(c, basis, fill(x, 1, 1), order))
 
-# when x is a vector and we have a univariate interpoland, we don't want to
-# return just the first element (see next method)
-funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
+# 1d basis + x::Number + c::Vec => 1 point, 1 func ==> out scalar
+funeval(c::AbstractVector, basis::Basis{1}, x::Real, order=0) =
+    funeval(c, basis, fill(x, 1, 1), order)[1]
+
+# 1d basis + x::Vec + c::Mat => manypoints, many func ==> out 2d
+funeval{T<:Number}(c::AbstractMatrix, basis::Basis{1}, x::AbstractVector{T}, order=0) =
     funeval(c, basis, x[:, :], order)
 
-# Here we want only the first element because we have a N>1 dimensional basis
-# and we passed only a 1 dimensional array of points at which to evaluate,
-# meaning we must have passed a single point.
-funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
+# 1d basis + x::Vec + c::Vec => manypoints, 1 func ==> out 1d
+funeval{T<:Number}(c::AbstractVector, basis::Basis{1}, x::AbstractVector{T}, order=0) =
+    vec(funeval(c, basis, reshape(x, length(x), 1), order))
+
+# N(>1)d basis + x::Vec + c::Vec ==> 1 point, 1 func ==> out scalar
+funeval{N,T<:Number}(c::AbstractVector, basis::Basis{N}, x::AbstractVector{T}, order=0) =
     funeval(c, basis, reshape(x, 1, N), order)[1]
+
+# N(>1)d basis + x::Vec + c::Mat ==> 1 point, many func ==> out vec
+funeval{N,T<:Number}(c::AbstractMatrix, basis::Basis{N}, x::AbstractVector{T}, order=0) =
+    vec(funeval(c, basis, reshape(x, 1, N), order))
 
 function funeval{N}(c, basis::Basis{N}, x::TensorX, order::Int=0)
     # check inputs

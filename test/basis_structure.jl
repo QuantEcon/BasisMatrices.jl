@@ -24,6 +24,11 @@
             @test ndims(Φ) == 3
         end
 
+        @test Φ_expanded != Φ_direct
+        @test Φ_expanded != Φ_tensor
+        @test Φ_tensor != Φ_direct
+        @test Φ_expanded_1d != Φ_expanded
+
         for Φ in (Φ_direct, Φ_tensor)
             @test ( Φ_expanded  ==  Φ ) == false
         end

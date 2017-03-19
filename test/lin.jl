@@ -22,15 +22,22 @@
     @testset "test derivative" begin
 
     	#test derivative of basis indirectly, by fitting exponential function
-	bas2 = Basis(LinParams([0, 1.0], 1000000))
-	oeffs = funfitf(bas2, exp)
-	oints = rand(10000)
+    	bas2 = Basis(LinParams([0, 1.0], 1000000))
+    	coeffs = funfitf(bas2, exp)
+    	points = rand(10000)
 
-        # TODO: uncomment me!
-	# d1 = funeval(coeffs, bas2, points, 1)
-
-        # @test ≈(d1, exp.(points), atol=1e-7)
+    	d1 = funeval(coeffs, bas2, points, reshape([1], 1, 1))
+        @test ≈(d1, exp.(points), atol=1e-7)
 
     end
+    @test BasisMatrices.family(LinParams) == Lin
+    @test BasisMatrices.family_name(LinParams) == "Lin"
+    @test issparse(LinParams)
+
+    @test BasisMatrices.family(bas1.params[1]) == Lin
+    @test BasisMatrices.family_name(bas1.params[1]) == "Lin"
+    @test issparse(bas1.params[1])
+
+    @test_throws ErrorException evalbase(SplineSparse, bas1.params[1], rand(4), 1)
 
 end

@@ -38,4 +38,17 @@
     @testset "test evalbase with linear B spline" begin
         @test all(manualbase .== base)
     end
+
+    # test stuff that isn't implemented
+    @test_throws ErrorException evalbase(SplineSparse, params, nodes(params), 1)
+    @test_throws ErrorException evalbase(SplineSparse, params, nodes(params), -1)
+    @test_throws ErrorException evalbase(params, nodes(params), -1)
+
+    @test BasisMatrices.family(SplineParams) == Spline
+    @test BasisMatrices.family_name(SplineParams) == "Spline"
+    @test issparse(SplineParams)
+
+    @test BasisMatrices.family(params) == Spline
+    @test BasisMatrices.family_name(params) == "Spline"
+    @test issparse(params)
 end

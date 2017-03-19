@@ -74,4 +74,15 @@ I = manualint1(nod,params.a[1],params.b[1])
         @test ≈(B, mB, atol=1e-14)
     end
 
+    @test BasisMatrices.family(ChebParams) == Cheb
+    @test BasisMatrices.family_name(ChebParams) == "Cheb"
+    @test !issparse(ChebParams)
+
+    @test BasisMatrices.family(params) == Cheb
+    @test BasisMatrices.family_name(params) == "Cheb"
+    @test !issparse(params)
+
+    @test_throws DimensionMismatch BasisMatrices.evalbasex!(rand(2, 7), rand(4), params, rand(4))
+    @test_throws DimensionMismatch BasisMatrices.evalbasex!(rand(4, 6), rand(4), params, rand(4))
+
 end  # testset

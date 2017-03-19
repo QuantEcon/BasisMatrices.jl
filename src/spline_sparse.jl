@@ -202,10 +202,12 @@ function \(s::SplineSparse, x::Union{AbstractVector,AbstractMatrix})
     sparse(s) \ x
 end
 
-function tensor_prod(syms, inds, lens, add_index)
+function tensor_prod{T<:AbstractArray}(t::Type{T}, syms, inds, lens, add_index)
     if length(syms) == 0
         subs = [:($(Symbol("i_", j)) + $(inds[j])) for j in length(inds):-1:1]
-        return Expr(:ref, :c, subs...)
+        out = Expr(:ref, :c, subs...)
+        T <: AbstractMatrix && push!(out.args, :col)
+        return out
     else
         exprs = []
         for i in 1:lens[1]
@@ -213,7 +215,7 @@ function tensor_prod(syms, inds, lens, add_index)
                 :call,
                 :(*),
                 Symbol(syms[1], "_", i),
-                tensor_prod(syms[2:end], cat(1, inds,[i-1]), lens[2:end], add_index)
+                tensor_prod(t, syms[2:end], cat(1, inds,[i-1]), lens[2:end], add_index)
             )
             push!(exprs, e)
         end
@@ -221,10 +223,13 @@ function tensor_prod(syms, inds, lens, add_index)
     end
 end
 
+shape_c_expr{T<:AbstractVector}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size(_, 2), rk.B))))
+shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size(_, 2), rk.B))..., size(_c, 2)))
+
 # if we have all `SplineSparse`s we can special case out = rk*c
-@generated function Base.A_mul_B!(out::StridedVector,
+@generated function Base.A_mul_B!(out::StridedVecOrMat,
                                   rk::RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}},
-                                  _c::StridedVector)
+                                  _c::StridedVecOrMat)
     N = length(rk.parameters[1].parameters)
     first_v = Expr(:(=), Symbol("v_", N), :(val_ix(rk.B[$N], row, 1, 1)))
     Ls = Int[chunk_len(i) for i in rk.parameters[1].parameters]
@@ -243,11 +248,11 @@ end
     unpack_Bs = Expr(:block, unpack_Bs_args...)
 
     syms = [Symbol("v", i) for i in 1:N]
-    prod = tensor_prod(syms, [], Ls, false)
+    prod = tensor_prod(_c, syms, [], Ls, false)
 
     code = quote
         if any(n_chunks(i) != 1 for i in rk.B)
-            msg("Only supported for combining univariate bases for now...")
+            msg = "Only supported for combining univariate bases for now..."
             throw(ArgumentError(msg))
         end
 
@@ -258,13 +263,13 @@ end
             end
         end
 
-        c = reshape(_c, reverse(map(_ -> size(_, 2), rk.B)))
+        c = $(shape_c_expr(_c))
 
-        @inbounds for row in 1:size(out, 1)
+        @inbounds for col in 1:size(out, 2), row in 1:size(out, 1)
             @nexprs $N j -> i_j = rk.B[j].cols[col_ix(rk.B[j], row, 1)]
             @nexprs $N j -> iv_j = val_ix(rk.B[j], row, 1, 1)
             $(unpack_Bs)
-            out[row] = $(prod)
+            out[row, col] = $(prod)
         end
     end
 

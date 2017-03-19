@@ -184,7 +184,7 @@ function ckronxi(b::Array, c, ind=1:length(b))
     reshape(z, mm, size(c, 2))  # 39
 end
 
-immutable RowKron{T<:Tuple}
+immutable RowKron{T<:Tuple{Vararg{TypeVar(:TM, AbstractMatrix)}}}
     B::T
 end
 
@@ -193,11 +193,6 @@ function RowKron(B::AbstractMatrix...)
     if any(x -> x != nrow[1], nrow)
         msg = "All matrices must have the same number of rows"
         throw(DimensionMismatch(msg))
-    end
-
-    if any(x -> !(isa(x, AbstractMatrix)), B)
-        msg = "All arguments to RowKron must be matrices"
-        throw(ArgumentError(msg))
     end
 
     RowKron(B)
@@ -249,12 +244,17 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
             for ptr in (Bend.colptr[ccB]):(Bend.colptr[ccB+1]-1)
                 _r = Bend.rowval[ptr]
                 _v = $(op)(Bend.nzval[ptr])
-                out[i] += d[_r, end] * _v * c[_r]
+                full_B = d[_r, end] * _v
+                for _c in 1:ccol
+                    out[i, _c] += full_B * c[_r, _c]
+                end
             end
         else
             for _r in 1:nrow
                 full_B = d[_r, end] * Bend[_r, ccB]
-                out[i] += full_B * c[_r]
+                for _c in 1:ccol
+                    out[i, _c] += full_B * c[_r, _c]
+                end
             end
         end
     end : quote
@@ -351,7 +351,7 @@ function *(rk::RowKron, c::StridedVector)
 end
 
 function *(rk::RowKron, c::StridedMatrix)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1), size(c, 2))
     A_mul_B!(out, rk, c)
     out
 end
@@ -371,7 +371,7 @@ end
 # cdprodx.m -- DONE
 cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
 
-function cdprodx(b::Array, c::StridedVecOrMat,
+function cdprodx{T<:AbstractMatrix}(b::AbstractArray{T}, c::StridedVecOrMat,
                  ind::AbstractArray{Int}=1:prod(size(b)))
     _check_cdprodx(b, c, ind)
     rk = RowKron(b[ind]...)
@@ -384,9 +384,9 @@ function nodeunif(n::Int, a::Int, b::Int)
     return x, x
 end
 
-function nodeunif(n::Array, a::Array, b::Array)
+function nodeunif{T<:Integer}(n::AbstractArray{T}, a::AbstractArray, b::AbstractArray)
     d = length(n)
-    xcoord = Array{Any}(d)
+    xcoord = Array{AbstractVector}(d)
     for k=1:d
         xcoord[k] = linspace(a[k], b[k], n[k])
     end

@@ -97,6 +97,63 @@ end
     end
 end
 
+@testset "RowKron" begin
+    # throws when try ot pass a non matrix
+    @test_throws MethodError RowKron((eye(2), I))
+
+    rk = RowKron(eye(3), eye(3), eye(3, 100))
+    @test size(rk, 1) == 3
+    @test size(rk, 2) == 900
+    @test size(rk) == (3, 900)
+    @test BasisMatrices.sizes(rk, 1) == [3, 3, 3]
+    @test BasisMatrices.sizes(rk, 2) == [3, 3, 100]
+    for i in 3:10
+        @test BasisMatrices.sizes(rk, i) == [1, 1, 1]
+    end
+
+    bs = AbstractMatrix[sprandn(5, rand(5:13), 0.8) for _ in 1:3]
+    rk_last_sparse = RowKron(bs...)
+    big_last_sparse = reduce(row_kron, bs)
+
+    push!(bs, eye(5))
+    rk_last_full = RowKron(bs...)
+    big_last_full = reduce(row_kron, bs)
+
+    for (rk, big) in [(rk_last_sparse, big_last_sparse), (rk_last_full, big_last_full)]
+        c = rand(size(rk, 2))
+        c2 = rand(size(rk, 1))
+
+        # non-mutating
+        @test rk * c == big * c
+        @test rk * [c c] == big * [c c]
+
+        # mutating
+        A_mul_B!(c2, rk, c)
+        @test c2 == big*c
+
+        # mutating matrix
+        c2mat = [c2 c2]
+        A_mul_B!(c2mat, rk, [c c])
+        @test c2mat == big * [c c]
+
+        ## Transepose op
+        # reuse c vector for this...
+        At_mul_B!(c, rk, c2)
+        @test c == big'*c2
+
+        # vector and matrix versions
+        @test At_mul_B(rk, c2) == c
+        @test At_mul_B(rk, [c2 c2]) == [c c]
+
+        # mutating matrix
+        c1mat = [c c]
+        At_mul_B!(c1mat, rk, [c2 c2])
+        @test c1mat == big'*[c2 c2]
+
+    end
+
+end
+
 @testset "cdprodx" begin
     for nrow in 3:3:100
         for nb in 2:5
@@ -119,4 +176,20 @@ end
             @test maximum(abs, want2 - Base.At_mul_B(rk, c2)) < 1e-12
         end
     end
+
+    x = rand(10)
+    @test BasisMatrices.cdprodx(eye(10), x) == x
+end
+
+@testset "nodeunif" begin
+    X, x12 = BasisMatrices.nodeunif([5, 5], [0, 1], [3, 3])
+    @test x12[1] == linspace(0, 3, 5)
+    @test x12[2] == linspace(1, 3, 5)
+    @test size(X) == (25, 2)
+    @test X[:, 1] == repmat(x12[1], 5)
+    @test X[:, 2] == repeat(x12[2], inner=[5])
+
+    x, x1 = BasisMatrices.nodeunif(5, 0, 3)
+    @test x == linspace(0, 3, 5)
+    @test x1 == linspace(0, 3, 5)
 end

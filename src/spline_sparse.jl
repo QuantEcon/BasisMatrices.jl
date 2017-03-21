@@ -20,6 +20,7 @@ n_chunks{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = N
 chunk_len{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = L
 Base.eltype{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = T
 ind_type{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = I
+Base.copy{T,I,N,L}(x::SplineSparse{T,I,N,L}) = SplineSparse{T,I,N,L}(x.ncol, x.vals, x.cols)
 
 for f in [:n_chunks, :chunk_len, :(Base.eltype), :ind_type]
     @eval $(f)(s::SplineSparse) = $(f)(typeof(s))

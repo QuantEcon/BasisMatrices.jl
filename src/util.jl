@@ -427,7 +427,7 @@ end
 function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     n = length(table)
     m = length(x)
-    out = fill(42, m)
+    out = Array{Int}(m)
 
     # lower enbound adjustment
     numfirst = 1

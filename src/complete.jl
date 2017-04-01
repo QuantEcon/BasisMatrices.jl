@@ -87,7 +87,7 @@ end
 
 function complete_polynomial{T}(z::Vector{T}, d::Int)
     nvar = length(z)
-    out = Array(T, n_complete(nvar, d))
+    out = Array{T}(n_complete(nvar, d))
     complete_polynomial!(out, z, Degree{d}())
 
     return out
@@ -192,7 +192,7 @@ end
 
 function complete_polynomial{T}(z::Vector{T}, d::Int, der::Int)
     nvar = length(z)
-    out = Array(T, n_complete(nvar, d))
+    out = Array{T}(n_complete(nvar, d))
     complete_polynomial!(out, z, Degree{d}(), Derivative{der}())
 
     return out
@@ -240,7 +240,7 @@ end
 
 function complete_polynomial{T}(z::Matrix{T}, d::Int, der::Int)
     nobs, nvar = size(z)
-    out = Array(T, nobs, n_complete(nvar, d))
+    out = Array{T}(nobs, n_complete(nvar, d))
     complete_polynomial!(out, z, Degree{d}(), Derivative{der}())
 
     return out

@@ -58,9 +58,17 @@ Basis(bs::Basis...) = _Basis2(bs)
     # Tuple. Note that we don't use `tuple` because that will create a tuple
     # obejct, not the `Tuple` type.
     tup_of_tups = map(_get_TP, bs.parameters)
-    TP = Tuple{vcat([[x.parameters...] for x in tup_of_tups]...)...}
+    basis_types = []
+    for x in tup_of_tups
+        push!(basis_types, x.parameters...)
+    end
+    TP = Tuple{basis_types...}
     quote
-        Basis{$N,$TP}(tuple(vcat([[x.params...] for x in bs]...)...))
+        new_params = []
+        for x in bs
+            push!(new_params, x.params...)
+        end
+        Basis{$N,$TP}(tuple(new_params...))
     end
 end
 

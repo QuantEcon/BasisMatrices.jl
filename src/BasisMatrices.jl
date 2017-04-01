@@ -44,8 +44,12 @@ export gridmake, gridmake!, ckron
 
 abstract BasisFamily
 abstract BasisParams
-typealias TensorX Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}
-typealias IntSorV Union{Int, AbstractVector{Int}}
+const IntSorV = Union{Int, AbstractVector{Int}}
+@static if VERSION >= v"0.6-"
+    const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{<:AbstractVector}}
+else
+    const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}
+end
 
 include("util.jl")
 include("spline_sparse.jl")

@@ -224,12 +224,20 @@ function tensor_prod{T<:AbstractArray}(t::Type{T}, syms, inds, lens, add_index)
     end
 end
 
-shape_c_expr{T<:AbstractVector}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size(_, 2), rk.B))))
-shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size(_, 2), rk.B))..., size(_c, 2)))
+_ncol(x::AbstractArray) = size(x, 2)
+
+shape_c_expr{T<:AbstractVector}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))))
+shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))..., size(_c, 2)))
+
+@static if VERSION >= v"0.6-"
+    const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
+else
+    const RKSS = RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}}
+end
 
 # if we have all `SplineSparse`s we can special case out = rk*c
 @generated function Base.A_mul_B!(out::StridedVecOrMat,
-                                  rk::RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}},
+                                  rk::RKSS,
                                   _c::StridedVecOrMat)
     N = length(rk.parameters[1].parameters)
     first_v = Expr(:(=), Symbol("v_", N), :(val_ix(rk.B[$N], row, 1, 1)))
@@ -252,7 +260,8 @@ shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size
     prod = tensor_prod(_c, syms, [], Ls, false)
 
     code = quote
-        if any(n_chunks(i) != 1 for i in rk.B)
+        for B in rk.B
+            n_chunks(B) == 1 && continue
             msg = "Only supported for combining univariate bases for now..."
             throw(ArgumentError(msg))
         end
@@ -266,11 +275,13 @@ shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(map(_ -> size
 
         c = $(shape_c_expr(_c))
 
-        @inbounds for col in 1:size(out, 2), row in 1:size(out, 1)
-            @nexprs $N j -> i_j = rk.B[j].cols[col_ix(rk.B[j], row, 1)]
-            @nexprs $N j -> iv_j = val_ix(rk.B[j], row, 1, 1)
-            $(unpack_Bs)
-            out[row, col] = $(prod)
+        @inbounds for col in 1:size(out, 2)
+            for row in 1:size(out, 1)
+                @nexprs $N j -> i_j = rk.B[j].cols[col_ix(rk.B[j], row, 1)]
+                @nexprs $N j -> iv_j = val_ix(rk.B[j], row, 1, 1)
+                $(unpack_Bs)
+                out[row, col] = $(prod)
+            end
         end
     end
 

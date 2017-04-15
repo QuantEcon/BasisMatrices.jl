@@ -7,7 +7,7 @@ immutable Lin <: BasisFamily end
 type LinParams{T<:AbstractVector} <: BasisParams
     breaks::T
     evennum::Int
-    function LinParams{T}(breaks::T, evennum::Int)
+    function (::Type{LinParams{T}}){T}(breaks::T, evennum::Int)
         n = length(breaks)  # 28
         !(issorted(breaks)) && error("breaks should be increasing")
 

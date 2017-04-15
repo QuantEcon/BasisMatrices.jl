@@ -31,7 +31,9 @@ immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     inds::Vector{Vector{Int}}  # Smolyak indices
     pinds::Matrix{Int64}  # Polynomial indices
 
-    function SmolyakParams{T,Tmu}(d::Int, mu::Tmu, a::Vector{T}, b::Vector{T})
+    function (::Type{SmolyakParams{T,Tmu}}){T,Tmu}(
+            d::Int, mu::Tmu, a::Vector{T}, b::Vector{T}
+        )
         d < 2 && error("You passed d = $d. d must be greater than 1")
         mu < 1 && error("You passed mu = $mu. mu must be greater than 1")
         if length(mu) > 1

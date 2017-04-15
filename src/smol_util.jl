@@ -4,7 +4,7 @@ immutable Permuter{T<:AbstractVector}
     a::T
     len::Int
     # sort so we can deal with repeated elements
-    Permuter{T}(a::T) = new{T}(sort(a), length(a))
+    (::Type{Permuter{T}}){T}(a::T) = new{T}(sort(a), length(a))
 end
 Permuter{T<:AbstractVector}(a::T) = Permuter{T}(a)
 

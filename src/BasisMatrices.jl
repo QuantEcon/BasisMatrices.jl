@@ -42,8 +42,8 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
 #re-exports
 export gridmake, gridmake!, ckron
 
-abstract BasisFamily
-abstract BasisParams
+@compat abstract type BasisFamily end
+@compat abstract type BasisParams end
 const IntSorV = Union{Int, AbstractVector{Int}}
 @static if VERSION >= v"0.6-"
     const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{<:AbstractVector}}

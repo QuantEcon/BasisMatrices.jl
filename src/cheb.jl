@@ -9,7 +9,7 @@ type ChebParams{T} <: BasisParams
     a::T
     b::T
 
-    function ChebParams{T}(n::Int, a::T, b::T)
+    function (::Type{ChebParams{T}}){T}(n::Int, a::T, b::T)
         n <= 0 && error("n must be positive")
         a >= b && error("left endpoint (a) must be less than right end point (b)")
         new{T}(n, a, b)

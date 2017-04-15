@@ -214,7 +214,7 @@ function Base.size(rk::RowKron, i::Int)
     if i == 1
         size(rk.B[1], 1)
     elseif i == 2
-        prod(map(_ -> size(_, 2), rk.B))
+        prod(map(A -> size(A, 2), rk.B))
     else
         1
     end
@@ -222,7 +222,7 @@ end
 
 Base.size(rk::RowKron) = (size(rk, 1), size(rk, 2))
 
-sizes(rk::RowKron, i::Integer) = collect(map(_ -> size(_, i), rk.B))
+sizes(rk::RowKron, i::Integer) = collect(map(A -> size(A, i), rk.B))
 
 for (f, op, transp) in ((:A_mul_B!, :identity, false),
                         (:Ac_mul_B!, :ctranspose, true),

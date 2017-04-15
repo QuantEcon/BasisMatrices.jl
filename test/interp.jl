@@ -15,7 +15,7 @@ holder = (
 
     # function to interpolate
     f(x1, x2) = cos.(x2) ./ exp.(x1)
-    f(X::Matrix) = f(X[:, 1], X[:, 2])
+    f(X::Matrix) = f.(X[:, 1], X[:, 2])
 
     # function at nodes
     y = f(X)

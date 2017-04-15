@@ -3,11 +3,13 @@ immutable SplineSparse{T,I,n_chunks,chunk_len} <: AbstractSparseMatrix{T,I}
     vals::Vector{T}
     cols::Vector{I}
 
-    function SplineSparse(col, vals, cols)
+    function (::Type{SplineSparse{T,I,n_chunks,chunk_len}}){T,I,n_chunks,chunk_len}(
+            col, vals, cols
+        )
         if length(cols)*chunk_len != length(vals)
             error("vals and cols not conformable")
         end
-        new(col, vals, cols)
+        new{T,I,n_chunks,chunk_len}(col, vals, cols)
     end
 end
 

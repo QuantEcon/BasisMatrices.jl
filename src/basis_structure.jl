@@ -2,8 +2,8 @@
 # BasisMatrix Type #
 # ------------------- #
 
-abstract AbstractBasisMatrixRep
-typealias ABSR AbstractBasisMatrixRep
+@compat abstract type AbstractBasisMatrixRep end
+const ABSR = AbstractBasisMatrixRep
 
 immutable Tensor <: ABSR end
 immutable Direct <: ABSR end

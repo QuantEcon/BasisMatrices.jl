@@ -158,7 +158,7 @@ end
     for nrow in 3:3:100
         for nb in 2:5
             b = [sprand(nrow, rand(5:13), 0.3) for _ in 1:nb]
-            c = rand(prod([size(_, 2) for _ in b]))
+            c = rand(prod([size(A, 2) for A in b]))
 
             full_b = reduce(row_kron, b)
             want = full_b * c

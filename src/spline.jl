@@ -10,7 +10,7 @@ type SplineParams{T<:AbstractVector} <: BasisParams
     k::Int
 
     # constructor to accept spline params arguments, do some pre-processing
-    function SplineParams{T}(breaks::T, evennum::Int, k::Int)
+    function (::Type{SplineParams{T}}){T}(breaks::T, evennum::Int, k::Int)
         # error handling
         k < 0 && error("spline order must be positive")
         length(breaks) < 2 && error("Must have at least two breakpoints")

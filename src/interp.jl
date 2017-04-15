@@ -4,15 +4,15 @@
 
 # Tensor representation, single function method; calls function that computes coefficients below below
 function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Vector{T})
-    _get_coefs_deep(basis,bs,y)[:,1]
+    _get_coefs_deep(basis, bs, y)[:,1]
 end
 
 # Tensor representation, multiple function method; calls function that computes coefficients below
 function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Matrix{T})
-    _get_coefs_deep(basis,bs,y)
+    _get_coefs_deep(basis, bs, y)
 end
 
-function _get_coefs_deep(basis::Basis,bs::BasisMatrix{Tensor},y)
+function _get_coefs_deep(basis::Basis, bs::BasisMatrix{Tensor}, y)
     if any(bs.order[1, :] .!= 0)
         error("invalid basis structure - first elements must be order 0")
     end
@@ -21,8 +21,9 @@ function _get_coefs_deep(basis::Basis,bs::BasisMatrix{Tensor},y)
 end
 
 # convert to expanded and call the method below
-get_coefs(basis::Basis, bs::BasisMatrix{Direct}, y) =
+function get_coefs(basis::Basis, bs::BasisMatrix{Direct}, y)
     get_coefs(basis, convert(Expanded, bs), y)
+end
 
 get_coefs(basis::Basis, bs::BasisMatrix{Expanded}, y) = bs.vals[1] \ y
 
@@ -36,22 +37,16 @@ end
 # get_coefs(::Basis, ::BasisMatrix, ::Array) does almost all the work for
 # these methods
 function funfitxy(basis::Basis, bs::BasisMatrix, y)
-    m = check_funfit(basis, bs, y)
+    check_funfit(basis, bs, y)
     c = get_coefs(basis, bs, y)
     c, bs
 end
 
-function funfitxy{T}(basis::Basis, x::Vector{Vector{T}}, y)
+# use tensor form
+function funfitxy(basis::Basis, x::TensorX, y)
     m = check_funfit(basis, x, y)
 
-    # additional checks for Array{Any} array
-    mm = prod([size(xi, 1) for xi in x])
-    mm != m && error("x and y are incompatible")
-
-    # get Tensor form -- most efficient
     bs = BasisMatrix(basis, Tensor(), x, 0)
-
-    # get coefs and return
     c = get_coefs(basis, bs, y)
     c, bs
 end
@@ -69,60 +64,23 @@ function funfitxy(basis::Basis, x, y)
 end
 
 function funfitf(basis::Basis, f::Function, args...)
-    x = nodes(basis)[1]
-    y = f(x, args...)
-    funfitxy(basis, x, y)[1]
+    X, xn = nodes(basis)
+    y = f(X, args...)
+    funfitxy(basis, xn, y)[1]
 end
+
+function Base.:\(b::Basis, y::AbstractArray)
+    x123 = nodes(b)[2]
+    funfitxy(b, x123, y)[1]
+end
+
+Base.:\(b::Basis, f::Function) = funfitf(b, f)
 
 # ---------- #
 # Evaluation #
 # ---------- #
 
-# funeval wants to evaluate at a matrix. As a stop-gap until I find some
-# time, this method makes a scalar x into a 1x1 matrix
-funeval(c, basis::Basis{1}, x::Real, order=0) =
-    funeval(c, basis, fill(x, 1, 1), order)
-
-# when x is a vector and we have a univariate interpoland, we don't want to
-# return just the first element (see next method)
-funeval{T<:Number}(c, basis::Basis{1}, x::Vector{T}, order=0) =
-    funeval(c, basis, x[:, :], order)
-
-# Here we want only the first element because we have a N>1 dimensional basis
-# and we passed only a 1 dimensional array of points at which to evaluate,
-# meaning we must have passed a single point.
-funeval{N,T<:Number}(c, basis::Basis{N}, x::Vector{T}, order=0) =
-    funeval(c, basis, reshape(x, 1, N), order)[1]
-
-function funeval{N,T}(c, basis::Basis{N}, x::Vector{Vector{T}}, order=0)
-    # check inputs
-    size(x, 1) == N ||  error("x must have d=$N elements")
-    order =_check_order(N, order)
-
-    # construct tensor form BasisMatrix
-    bs = BasisMatrix(basis, Tensor(), x, order)  # 67
-
-    # pass of to specialized method below
-    funeval(c, bs, order)
-end
-
-# helper method to construct BasisMatrix{Direct}, then pass to the method
-# below below
-function funeval{N}(c, basis::Basis{N}, x::Matrix, order=0)
-    # check that inputs are conformable
-    size(x, 2) == N || error("x must have d=$(N) columns")  # 62
-    order =_check_order(N, order)
-
-    # construct BasisMatrix in Direct form
-    bs = BasisMatrix(basis, Direct(), x, order)  # 67
-
-    # pass of to specialized method below
-    funeval(c, bs, order)
-end
-
-# funeval1
-function funeval(c, bs::BasisMatrix{Tensor},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))
+function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # funeval1
     kk, d = size(order)  # 95
 
     # 98 reverse the order of evaluation: B(d) × B(d-1) × ⋯ × B(1)
@@ -131,33 +89,31 @@ function funeval(c, bs::BasisMatrix{Tensor},
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
 
-    f = Array(eltype(c), nx, size(c, 2), kk)  # 100
+    f = Array{eltype(c),3}(nx, size(c, 2), kk)  # 100
 
     for i=1:kk
         f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
     end
-    return squeeze_trail(f)
+    f
 end
 
-function funeval(c, bs::BasisMatrix{Direct},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval2
+function _funeval(c, bs::BasisMatrix{Direct}, order::AbstractMatrix{Int})  # funeval2
     kk, d = size(order)  # 95
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
     order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
 
-    f = Array(eltype(c), size(bs.vals[1], 1), size(c, 2), kk)  # 116
+    f = Array{eltype(c),3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i=1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
     end
-    return squeeze_trail(f)
+    f
 end
 
-function funeval(c, bs::BasisMatrix{Expanded},
-                 order::Matrix{Int}=fill(0, 1, size(bs.order, 2)))  # funeval3
+function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # funeval3
     nx = size(bs.vals[1], 1)
     kk = size(order, 1)
-    f = Array(promote_type(eltype(c), eltype(bs.vals[1])), nx, size(c, 2), kk)
+    f = Array{promote_type(eltype(c),eltype(bs.vals[1])),3}(nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
         ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)
@@ -169,56 +125,146 @@ function funeval(c, bs::BasisMatrix{Expanded},
         f[:, :, i] = bs.vals[ind]*c  # 154
     end
 
-    return squeeze_trail(f)
+    f
+end
+
+# 1d basis + x::Number + c::Mat => 1 point, many func ==> out 1d
+funeval(c::AbstractMatrix, basis::Basis{1}, x::Real, order=0) =
+    vec(funeval(c, basis, fill(x, 1, 1), order))
+
+# 1d basis + x::Number + c::Vec => 1 point, 1 func ==> out scalar
+funeval(c::AbstractVector, basis::Basis{1}, x::Real, order=0) =
+    funeval(c, basis, fill(x, 1, 1), order)[1]
+
+# 1d basis + x::Vec + c::Mat => manypoints, many func ==> out 2d
+funeval{T<:Number}(c::AbstractMatrix, basis::Basis{1}, x::AbstractVector{T}, order=0) =
+    funeval(c, basis, x[:, :], order)
+
+# 1d basis + x::Vec + c::Vec => manypoints, 1 func ==> out 1d
+funeval{T<:Number}(c::AbstractVector, basis::Basis{1}, x::AbstractVector{T}, order=0) =
+    vec(funeval(c, basis, reshape(x, length(x), 1), order))
+
+# N(>1)d basis + x::Vec + c::Vec ==> 1 point, 1 func ==> out scalar
+funeval{N,T<:Number}(c::AbstractVector, basis::Basis{N}, x::AbstractVector{T}, order=0) =
+    funeval(c, basis, reshape(x, 1, N), order)[1]
+
+# N(>1)d basis + x::Vec + c::Mat ==> 1 point, many func ==> out vec
+funeval{N,T<:Number}(c::AbstractMatrix, basis::Basis{N}, x::AbstractVector{T}, order=0) =
+    vec(funeval(c, basis, reshape(x, 1, N), order))
+
+function funeval{N}(c, basis::Basis{N}, x::TensorX, order::Int=0)
+    # check inputs
+    size(x, 1) == N ||  error("x must have d=$N elements")
+
+    if order != 0
+        msg = string("passing order as integer only allowed for $(order=0).",
+                     " Try calling the version where `order` is a matrix")
+        error(msg)
+    end
+
+    _order = fill(0, 1, N)
+    bs = BasisMatrix(SplineSparse, basis, Tensor(), x, _order)  # 67
+    funeval(c, bs, _order)
+end
+
+function funeval{N}(c, basis::Basis{N}, x::TensorX, _order::AbstractMatrix)
+    # check inputs
+    size(x, 1) == N ||  error("x must have d=$N elements")
+    order = _check_order(N, _order)
+
+    # construct tensor form
+    bs = BasisMatrix(SparseMatrixCSC, basis, Tensor(), x, order)  # 67
+
+    # pass to specialized method below
+    return funeval(c, bs, order)
+end
+
+function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
+    # check inputs
+    size(x, 2) == N || error("x must have d=$(N) columns")
+
+    if order != 0
+        msg = string("passing order as integer only allowed for $(order=0).",
+                     " Try calling the version where `order` is a matrix")
+        error(msg)
+    end
+
+    _order = fill(0, 1, N)
+    bs = BasisMatrix(SplineSparse, basis, Direct(), x, _order)  # 67
+    funeval(c, bs, _order)
+end
+
+function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, _order::AbstractMatrix)
+    # check that inputs are conformable
+    size(x, 2) == N || error("x must have d=$(N) columns")  # 62
+    order = _check_order(N, _order)
+
+    # construct BasisMatrix in Direct for
+    bs = BasisMatrix(SparseMatrixCSC, basis, Direct(), x, order)  # 67
+
+    # pass of to specialized method below
+    funeval(c, bs, order)
+end
+
+function funeval(c::AbstractVector, bs::BasisMatrix, order::AbstractMatrix{Int})
+    _funeval(c, bs, order)[:, 1, :]
+end
+
+function funeval(c::AbstractMatrix, bs::BasisMatrix, order::AbstractMatrix{Int})
+    _funeval(c, bs, order)
+end
+
+# default method
+function funeval(c::AbstractVector, bs::BasisMatrix,
+                 order::Vector{Int}=fill(0, size(bs.order, 2)))
+    _funeval(c, bs, reshape(order, 1, length(order)))[:, 1, 1]
+end
+
+function funeval(c::AbstractMatrix, bs::BasisMatrix,
+                 order::Vector{Int}=fill(1, size(bs.order, 2)))
+    _funeval(c, bs, reshape(order, 1, length(order)))[:, :, 1]
 end
 
 # ------------------------------ #
 # Convenience `Interpoland` type #
 # ------------------------------ #
 
-type Interpoland{T,N,BST<:ABSR}
-    basis::Basis{N}               # the basis -- can't change
-    coefs::Vector{T}              # coefficients -- might change
-    bmat::BasisMatrix{BST}  # BasisMatrix at nodes of `b`
+type Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+    basis::TB  # the basis -- can't change
+    coefs::TC  # coefficients -- might change
+    bmat::TBM  # BasisMatrix at nodes of `b` -- can't change
 end
 
-function Interpoland(basis::Basis, bs::BasisMatrix, y::AbstractVector)
-    c = get_coefs(basis, bs, y)[:, 1]  # get first (only) column as `Vector`
+function Interpoland(basis::Basis, bs::BasisMatrix{Tensor}, y::AbstractArray)
+    c = get_coefs(basis, bs, y)
     Interpoland(basis, c, bs)
 end
 
-function Interpoland(basis::Basis, x::Array, y::AbstractVector)
-    c, bs = funfitxy(basis, x, y)
-    c = c[:, 1]
-    Interpoland(basis, c, bs)
+# compute Tensor form and hand off to method above
+function Interpoland(basis::Basis, y::AbstractArray)
+    bs = BasisMatrix(basis, Tensor())
+    Interpoland(basis, bs, y)
 end
 
-Interpoland(p::BasisParams, x, y) = Interpoland(Basis(p), x, y)
+"""
+Construct an Interpoland from a function.
 
+The function must have the signature `f(::AbstractMatrix)::AbstractArray`
+where each column of the input matrix is a vector of values along a single
+dimension
+"""
 function Interpoland(basis::Basis, f::Function)
-    # TODO: Decide if I want to do this or if I would rather do
-    #       x, xd = nodes(basis); y = f(x); Interpoland(basis, xd, y)
-    #       to get the BasisMatrix in Tensor format (potentially more
-    #       efficient)
-    x = nodes(basis)[1]
+    x, xd = nodes(basis)
     y = f(x)
-    Interpoland(basis, x, y)
+    bs = BasisMatrix(basis, Tensor(), xd)
+    Interpoland(basis, bs, y)
 end
 
 Interpoland(p::BasisParams, f::Function) = Interpoland(Basis(p), f)
 
 # let funeval take care of order and such. This just exists to make it so the
 # user doesn't have to keep track of the coefficient vector
-evaluate(interp::Interpoland, x; order=0) =
-    funeval(interp.coefs, interp.basis, x, order)
-
-#=
-TODO: I can add an
-
-@stagedfunction evaluate{N,T}(interp::Interpoland{Basis{N}}, x::NTuple{N,Vector{T}})
-
-that calls gridmake for me. Then they can pass points along individual dimensions
-=#
+(itp::Interpoland)(x, order=0) = funeval(itp.coefs, itp.basis, x, order)
 
 # now, given a new vector of `y` data we construct a new coefficient vector
 function update_coefs!(interp::Interpoland, y::Vector)
@@ -236,4 +282,4 @@ fit!(interp::Interpoland, y::Vector) = update_coefs!(interp, y)
 fit!(interp::Interpoland, f::Function) = update_coefs!(interp, f)
 
 Base.show{T,N,BST<:ABSR}(io::IO, ::Interpoland{T,N,BST}) =
-    print(io, "$N dimensional interpoland with $BST BasisMatrix")
+    print(io, "$N dimensional interpoland")

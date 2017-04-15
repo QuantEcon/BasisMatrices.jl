@@ -9,13 +9,13 @@
     X, x123 = nodes(mb)
 
     # construct expanded, direct, and tensor basis-structure representation
-    Φ_expanded = BasisMatrices.BasisMatrix(mb, BasisMatrices.Expanded(), X)
-    Φ_direct = BasisMatrices.BasisMatrix(mb, BasisMatrices.Direct(), X)
-    Φ_tensor = BasisMatrices.BasisMatrix(mb, BasisMatrices.Tensor(), x123)
+    Φ_expanded = BasisMatrix(mb, Expanded(), X)
+    Φ_direct = BasisMatrix(mb, Direct(), X)
+    Φ_tensor = BasisMatrix(mb, Tensor(), x123)
 
     # construct expanded, direct, and tensor basis-structure representation with 1D basis
-    Φ_expanded_1d = BasisMatrices.BasisMatrix(mb[1], BasisMatrices.Expanded(), X[:,1])
-    Φ_direct_1d = BasisMatrices.BasisMatrix(mb[1], BasisMatrices.Direct(), X[:,1])
+    Φ_expanded_1d = BasisMatrix(mb[1], Expanded(), X[:,1])
+    Φ_direct_1d = BasisMatrix(mb[1], Direct(), X[:,1])
 
     @testset "test standard Base methods" begin
         # test == and ndims, multiD
@@ -23,6 +23,11 @@
             @test  Φ  ==  Φ
             @test ndims(Φ) == 3
         end
+
+        @test Φ_expanded != Φ_direct
+        @test Φ_expanded != Φ_tensor
+        @test Φ_tensor != Φ_direct
+        @test Φ_expanded_1d != Φ_expanded
 
         for Φ in (Φ_direct, Φ_tensor)
             @test ( Φ_expanded  ==  Φ ) == false
@@ -33,8 +38,6 @@
             @test  Φ  ==  Φ
             @test ndims(Φ) == 1
         end
-
-        @test  Φ_expanded_1d  ==  Φ_direct_1d
 
     end
 
@@ -58,15 +61,25 @@
     end
 
     @testset "test internal tools" begin
-        ## test _vals_type
-        for (TF, TM) in [(Spline, SparseMatrixCSC{Float64,Int}),
-                         (Lin, SparseMatrixCSC{Float64,Int}),
-                         (Cheb, Matrix{Float64})]
-            @test BasisMatrices._vals_type(TF) == TM
-            @test BasisMatrices._vals_type(TF()) == TM
+        ## test bmat_type
+        for (TP, TM) in [(SplineParams{Vector{Float64}}, SparseMatrixCSC{Float64,Int}),
+                         (SplineParams{Vector{Float32}}, SparseMatrixCSC{Float32,Int}),
+                         (LinParams{AbstractVector{Float16}}, SparseMatrixCSC{Float16,Int}),
+                         (ChebParams{Complex{Float64}}, Matrix{Complex{Float64}})]
+            @test TM == @inferred BasisMatrices.bmat_type(TP)
         end
 
-        @test BasisMatrices._vals_type(BasisMatrices.BasisFamily) == AbstractMatrix{Float64}
+        @test BasisMatrices.bmat_type(SplineSparse, mb) == AbstractMatrix{Float64}
+        @test BasisMatrices.bmat_type(mb) == AbstractMatrix{Float64}
+
+        @test BasisMatrices.bmat_type(SplineSparse, mb[1]) == SplineSparse{Float64,Int}
+        @test BasisMatrices.bmat_type(mb[1]) == SparseMatrixCSC{Float64,Int}
+
+        @test BasisMatrices.bmat_type(SplineSparse, mb[2]) == Matrix{Float64}
+        @test BasisMatrices.bmat_type(mb[2]) == Matrix{Float64}
+
+        @test BasisMatrices.bmat_type(SplineSparse, mb[3]) == SplineSparse{Float64,Int}
+        @test BasisMatrices.bmat_type(mb[3]) == SparseMatrixCSC{Float64,Int}
 
         ## test _checkx
         # create test data
@@ -122,18 +135,54 @@
     end
 
     @testset "constructors" begin
-        nothing
+        # test constructor methods with ABSR types instead of instances
+        @test BasisMatrix(mb, Expanded, X) == Φ_expanded
+        @test BasisMatrix(mb, Direct, X) == Φ_direct
+        @test BasisMatrix(mb, Tensor, x123) == Φ_tensor
+        @test BasisMatrix(mb[1], Expanded, X[:,1]) == Φ_expanded_1d
+        @test BasisMatrix(mb[1], Direct, X[:,1]) == Φ_direct_1d
+
+        # test extra type methods
+        @test BasisMatrix(Void, mb, Expanded, X) == Φ_expanded
+        @test BasisMatrix(Void, mb, Direct, X) == Φ_direct
+        @test BasisMatrix(Void, mb, Tensor, x123) == Φ_tensor
+        @test BasisMatrix(Void, mb[1], Expanded, X[:,1]) == Φ_expanded_1d
+        @test BasisMatrix(Void, mb[1], Direct, X[:,1]) == Φ_direct_1d
+
+        ## Test SplineSparseMethods
+        @test BasisMatrix(SplineSparse, mb, Expanded, X) == Φ_expanded
+
+        # this one will be different -- need to break it out
+        bmd = @inferred BasisMatrix(SplineSparse, mb, Direct, X)
+        @test isa(bmd.vals[1], SplineSparse{Float64,Int})
+        @test bmd.vals[1] == Φ_direct.vals[1]  # this works even though they have different types
+
+        @test isa(bmd.vals[2], Matrix{Float64})
+        @test bmd.vals[2] == Φ_direct.vals[2]
+
+        @test isa(bmd.vals[3], SplineSparse{Float64,Int})
+        @test bmd.vals[3] == Φ_direct.vals[3]
+
+        bmt = @inferred BasisMatrix(SplineSparse, mb, Tensor, x123)
+        @test isa(bmt.vals[1], SplineSparse{Float64,Int})
+        @test bmt.vals[1] == Φ_tensor.vals[1]  # this works even though they have different types
+
+        @test isa(bmt.vals[2], Matrix{Float64})
+        @test bmt.vals[2] == Φ_tensor.vals[2]
+
+        @test isa(bmt.vals[3], SplineSparse{Float64,Int})
+        @test bmt.vals[3] == Φ_tensor.vals[3]
+
     end
 
     @testset "Test from PR #25" begin
-        basisμ = BasisMatrices.Basis(Cheb, 20, 0.0, 1.0)
-        basisσ = BasisMatrices.Basis(Cheb, 20, 0.0, 1.0)
-        basis = BasisMatrices.Basis(basisμ, basisσ)
-        S, (μs, σs) = BasisMatrices.nodes(basis)
-        bs = BasisMatrices.BasisMatrix(basis, BasisMatrices.Expanded(), S, [0 2])
-        @test isa(bs, BasisMatrices.BasisMatrix{Expanded}) == true
+        basisμ = Basis(Cheb, 20, 0.0, 1.0)
+        basisσ = Basis(Cheb, 20, 0.0, 1.0)
+        basis = Basis(basisμ, basisσ)
+        S, (μs, σs) = nodes(basis)
+        bs = BasisMatrix(basis, Expanded(), S, [0 2])
+        @test isa(bs, BasisMatrix{Expanded}) == true
     end
-
 
     # call show (which calls writemime) so we can get 100% coverage
     @testset "Printing" begin

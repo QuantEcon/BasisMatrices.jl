@@ -7,7 +7,7 @@ import Base: *
 function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
                                     ind::AbstractArray{Int}=1:length(b))
     d = length(ind)  # 26
-    n = Array(Int, d)  # 27
+    n = Array{Int}(d)  # 27
     for i=1:d  # 28
         n[i] = size(b[ind[i]], 2)
     end
@@ -31,10 +31,10 @@ end
 # dprod.m  - DONE
 function row_kron{S,T}(A::AbstractMatrix{S}, B::AbstractMatrix{T})
     out = _allocate_row_kron_out(A, B)
-    row_kron!(A, B, out)
+    row_kron!(out, A, B)
 end
 
-function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
+function row_kron!(out::AbstractMatrix, A::AbstractMatrix, B::AbstractMatrix)
     # get input dimensions
     nobsa, na = size(A)
     nobsb, nb = size(B)
@@ -49,7 +49,7 @@ function row_kron!(A::AbstractMatrix, B::AbstractMatrix, out::AbstractMatrix)
     out
 end
 
-function row_kron!(A::SparseMatrixCSC, B::SparseMatrixCSC, out::SparseMatrixCSC)
+function row_kron!(out::SparseMatrixCSC, A::SparseMatrixCSC, B::SparseMatrixCSC)
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -96,7 +96,7 @@ function row_kron!(A::SparseMatrixCSC, B::SparseMatrixCSC, out::SparseMatrixCSC)
     out
 end
 
-function row_kron!{T}(A::AbstractMatrix{T}, B::SparseMatrixCSC, out::SparseMatrixCSC)
+function row_kron!{T}(out::SparseMatrixCSC, A::AbstractMatrix{T}, B::SparseMatrixCSC)
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -133,7 +133,7 @@ function row_kron!{T}(A::AbstractMatrix{T}, B::SparseMatrixCSC, out::SparseMatri
 end
 
 
-function row_kron!{T}(A::SparseMatrixCSC, B::AbstractMatrix{T}, out::SparseMatrixCSC)
+function row_kron!{T}(out::SparseMatrixCSC, A::SparseMatrixCSC, B::AbstractMatrix{T})
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -184,16 +184,23 @@ function ckronxi(b::Array, c, ind=1:length(b))
     reshape(z, mm, size(c, 2))  # 39
 end
 
-immutable RowKron{T<:Tuple}
-    B::T
+@static if VERSION >= v"0.6-"
+    immutable RowKron{T<:Tuple{Vararg{<:AbstractMatrix}}}
+        B::T
+    end
+else
+    immutable RowKron{T<:Tuple{Vararg{TypeVar(:TM, AbstractMatrix)}}}
+        B::T
+    end
 end
 
 function RowKron(B::AbstractMatrix...)
-    nrow = map(_ -> size(_, 1), B)
-    if any(_ -> _ != nrow[1], nrow)
+    nrow = map(x -> size(x, 1), B)
+    if any(x -> x != nrow[1], nrow)
         msg = "All matrices must have the same number of rows"
         throw(DimensionMismatch(msg))
     end
+
     RowKron(B)
 end
 
@@ -207,7 +214,7 @@ function Base.size(rk::RowKron, i::Int)
     if i == 1
         size(rk.B[1], 1)
     elseif i == 2
-        prod(map(_ -> size(_, 2), rk.B))
+        prod(map(A -> size(A, 2), rk.B))
     else
         1
     end
@@ -215,7 +222,7 @@ end
 
 Base.size(rk::RowKron) = (size(rk, 1), size(rk, 2))
 
-sizes(rk::RowKron, i::Integer) = collect(map(_ -> size(_, i), rk.B))
+sizes(rk::RowKron, i::Integer) = collect(map(A -> size(A, i), rk.B))
 
 for (f, op, transp) in ((:A_mul_B!, :identity, false),
                         (:Ac_mul_B!, :ctranspose, true),
@@ -243,12 +250,17 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
             for ptr in (Bend.colptr[ccB]):(Bend.colptr[ccB+1]-1)
                 _r = Bend.rowval[ptr]
                 _v = $(op)(Bend.nzval[ptr])
-                out[i] += d[_r, end] * _v * c[_r]
+                full_B = d[_r, end] * _v
+                for _c in 1:ccol
+                    out[i, _c] += full_B * c[_r, _c]
+                end
             end
         else
             for _r in 1:nrow
                 full_B = d[_r, end] * Bend[_r, ccB]
-                out[i] += full_B * c[_r]
+                for _c in 1:ccol
+                    out[i, _c] += full_B * c[_r, _c]
+                end
             end
         end
     end : quote
@@ -276,12 +288,12 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
     function Base.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
         $(checks)
 
-        _is_sparse = issparse(rk)
+        _is_sparse = map(x -> isa(x, SparseMatrixCSC), rk.B)
         _last_sparse = _is_sparse[end]
 
         nrow = size(rk, 1)
         Nb = length(rk)
-        d = Array(eltype(rk), nrow, Nb)
+        d = Array{eltype(rk)}(nrow, Nb)
         d[:, 1] = one(eltype(rk))
 
         n_col_B = sizes(rk, 2)
@@ -345,7 +357,7 @@ function *(rk::RowKron, c::StridedVector)
 end
 
 function *(rk::RowKron, c::StridedMatrix)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
+    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1), size(c, 2))
     A_mul_B!(out, rk, c)
     out
 end
@@ -365,30 +377,11 @@ end
 # cdprodx.m -- DONE
 cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
 
-function cdprodx(b::Array, c::StridedVecOrMat,
+function cdprodx{T<:AbstractMatrix}(b::AbstractArray{T}, c::StridedVecOrMat,
                  ind::AbstractArray{Int}=1:prod(size(b)))
     _check_cdprodx(b, c, ind)
     rk = RowKron(b[ind]...)
     rk*c
-end
-
-# cckronx.m -- DONE
-cckronx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b * c  # 23
-
-function cckronx(b::Array, c, ind=1:prod(size(b)))
-    d = length(ind)  # 25
-    n = Int[size(b[ind[i]], 2) for i=1:d]  #26-27
-    prod(n) != size(c, 1) && error("b and c are not conformable")  # 28-30
-
-    z = c'  # 31
-    mm = 1  # 32
-    for i=1:d  # 33
-        m = prod(size(z)) / n[i]  # 34
-        z = reshape(z, m, n[i])  # 35
-        z = b[ind[i]] \ z'  # 36
-        mm = mm*size(z, 1)  # 37
-    end  # 38
-    reshape(z, mm, size(c, 2))  # 39
 end
 
 # nodeunif.m -- DONE
@@ -397,31 +390,16 @@ function nodeunif(n::Int, a::Int, b::Int)
     return x, x
 end
 
-function nodeunif(n::Array, a::Array, b::Array)
+function nodeunif{T<:Integer}(n::AbstractArray{T}, a::AbstractArray, b::AbstractArray)
     d = length(n)
-    xcoord = Array{Any}(d)
+    xcoord = Array{AbstractVector}(d)
     for k=1:d
         xcoord[k] = linspace(a[k], b[k], n[k])
     end
     return gridmake(xcoord...), xcoord
 end
 
-function squeeze_trail(x::Array)
-    sz = size(x)
-    squeezers = Int[]
-    n = length(sz)
-    for i=n:-1:1
-        if sz[i] == 1
-            push!(squeezers, i)
-        else
-            break
-        end
-    end
-    squeeze(x, tuple(squeezers...))
-end
-
-
-function lookup(table::Vector, x::Real, p::Int=0)
+function lookup(table::AbstractVector, x::Real, p::Int=0)
     ind = searchsortedfirst(table, x) - 1
     m = length(table)
 
@@ -455,12 +433,12 @@ end
 function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     n = length(table)
     m = length(x)
-    out = fill(42, m)
+    out = Array{Int}(m)
 
     # lower enbound adjustment
     numfirst = 1
     t1 = table[1]
-    for i=2:n
+    for i in 2:n
         if table[i] == t1
             numfirst += 1
         else
@@ -472,7 +450,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     tn = table[n]
     if p >= 2
         n -= 1
-        for i=n:-1:1
+        for i in n:-1:1
             if table[i] == tn
                 n -= 1
             else
@@ -490,7 +468,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
                 out[i] = numfirst
             end
         else
-            for i=1:m
+            for i in 1:m
                 if table[1] <= x[i]
                     out[i] = numfirst
                 else
@@ -503,7 +481,7 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
 
     jlo = 1
 
-    for i=1:m
+    for i in 1:m
         inc = 1
         xi = x[i]
         if xi >= table[jlo]
@@ -555,6 +533,24 @@ function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
 
     out
 end
+
+"""
+    lookup(table::AbstractVector, x, p::Int=0)
+
+For a sorted vector `table`, return the index of the _last_ point smaller than
+`x`. `p` specifies endpoint adjustments and takes one of 4 values:
+
+1. `p=0`: no adjustment made
+2. `p=1`: if `x < minimum(table)`, then return `sum(table .== table[1])`
+3. `p=2`: if `x > maximum(table)`, then return `length(table)-sum(table .== table[end])`
+4. `p=3`: do both adjustments 1 and 2
+
+If `p > 3`, the `p=3` case is applied
+
+When `x` is a vector, a vector of integers is returned
+"""
+lookup
+
 
 
 # utility to expand the order input if needed
@@ -618,8 +614,8 @@ function _allocate_row_kron_out{T,S}(::Type{SparseMatrixCSC},
     k = _row_kron_sparse_out_nnz(A, B)
     SparseMatrixCSC(nobsa, na*nb,
         ones(Int, na*nb+1),          # colptr
-        Array(Int, k),                # rowval
-        Array(promote_type(S, T), k)  # nzval
+        Array{Int}(k),                # rowval
+        Array{promote_type(S,T)}(k)  # nzval
     )
 end
 
@@ -628,7 +624,7 @@ function _allocate_row_kron_out{T,S}(::Type{Matrix},
                                      B::AbstractMatrix{S})
     nobsa, na = size(A)
     nobsb, nb = size(B)
-    Array(promote_type(S, T), nobsa, na*nb)
+    Array{promote_type(S,T)}(nobsa, na*nb)
 end
 
 _allocate_row_kron_out(A::SparseMatrixCSC, B::SparseMatrixCSC) =

@@ -2,8 +2,8 @@
 # BasisMatrix Type #
 # ------------------- #
 
-abstract AbstractBasisMatrixRep
-typealias ABSR AbstractBasisMatrixRep
+@compat abstract type AbstractBasisMatrixRep end
+const ABSR = AbstractBasisMatrixRep
 
 immutable Tensor <: ABSR end
 immutable Direct <: ABSR end
@@ -18,8 +18,6 @@ Base.show{BST}(io::IO, b::BasisMatrix{BST}) =
     print(io, "BasisMatrix{$BST} of order $(b.order)")
 
 Base.ndims(bs::BasisMatrix) = size(bs.order, 2)
-# TODO: determine if I want `size(bs, i::Int)` methods to do
-# `prod([size(b.vals[1,j], i) for j=1:ndims(b)])`
 
 # not the same if either type parameter is different
 function =={BST1<:ABSR,BST2<:ABSR}(::BasisMatrix{BST1}, ::BasisMatrix{BST2})
@@ -62,7 +60,7 @@ end
     error("Basis is $N dimensional, x must have $N elements")
 end
 
-@inline function _checkx{T}(N, x::Vector{Vector{T}})
+@inline function _checkx(N, x::TensorX)
     # for BasisMatrix{Tensor} family. Need one vector per dimension
     if length(x) == N
         return x
@@ -128,16 +126,6 @@ function check_basis_structure(N::Int, x, order)
     return m, order, minorder, numbases, x
 end
 
-# give the type of the `vals` field based on the family type parameter of the
-# corresponding basis. `Spline` and `Lin` use sparse, `Cheb` uses dense
-# a hybrid must fall back to a generic AbstractMatrix{Float64}
-_vals_type(::Type{Spline}) = SparseMatrixCSC{Float64,Int}
-_vals_type(::Type{Lin}) = SparseMatrixCSC{Float64,Int}
-_vals_type(::Type{Cheb}) = Matrix{Float64}
-_vals_type(::Type{BasisFamily}) = AbstractMatrix{Float64}
-
-# conveneince method so we can pass an instance of the type also
-_vals_type{TF<:BasisFamily}(::TF) = _vals_type(TF)
 
 # --------------- #
 # convert methods #
@@ -151,7 +139,7 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
                       order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array(TM, numbas, 1)
+    vals = Array{TM}(numbas, 1)
 
     for i=1:numbas
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 63
@@ -168,7 +156,7 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
                       order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array(TM, numbas, 1)
+    vals = Array{TM}(numbas, 1)
 
     for i=1:numbas  # 54
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 55
@@ -182,15 +170,15 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
 end
 
 # funbconv from tensor to direct
-# TODO: there is probably a more efficient way to do this, but since I don't
+# HACK: there is probably a more efficient way to do this, but since I don't
 #       plan on doing it much, this will do for now. The basic point is that
 #       we need to expand the rows of each element of `vals` so that all of
 #       them have prod([size(v, 1) for v in bs.vals])) rows.
 function Base.convert{TM}(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
-                      order=fill(0, 1, size(bs.order, 2)))
+                          order=fill(0, 1, size(bs.order, 2)))
     d, numbas, d1 = check_convert(bs, order)
-    vals = Array(TM, numbas, d)
-    raw_ind = Array(Vector{Int}, d)
+    vals = Array{TM}(numbas, d)
+    raw_ind = Array{Vector{Int}}(d)
 
     for j=1:d
         for i=1:size(bs.vals, 1)
@@ -216,25 +204,16 @@ end
 # Constructors #
 # ------------ #
 
-# quick function to take order+vals and return expanded form for 1d problems
-function to_expanded(out_order::Matrix{Int}, vals::Array)
-    vals = vals[collect(out_order + (1 - minimum(out_order)))]
-    vals = reshape(vals, size(out_order))
-    BasisMatrix{Expanded,eltype(vals)}(out_order, vals)
-end
-
-
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
-function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
-                           x::AbstractArray=nodes(basis)[1], order=0)
-
+function BasisMatrix{N,BF,T2}(::Type{T2}, basis::Basis{N,BF}, ::Direct,
+                              x::AbstractArray=nodes(basis)[1], order=0)
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     # 76-77
     out_order = minorder
     out_format = Direct()
-    val_type = _vals_type(BF)
-    vals = Array(val_type, maximum(numbases), N)
+    val_type = bmat_type(T2, basis)
+    vals = Array{val_type}(maximum(numbases), N)
 
     # now do direct form, will convert to expanded later if needed
     for j=1:N
@@ -247,41 +226,35 @@ function BasisMatrix{N,BF}(basis::Basis{N,BF}, ::Direct,
 
         #131-135
         if length(orderj) == 1
-            vals[1, j] = evalbase(basis.params[j], x[:, j], orderj[1])
+            vals[1, j] = evalbase(T2, basis.params[j], x[:, j], orderj[1])
         else
             vals[orderj-minorder[j]+1, j] =
-                evalbase(basis.params[j], x[:, j], orderj)
+                evalbase(T2, basis.params[j], x[:, j], orderj)
         end
-    end
-
-    # if N == 1, switch to expanded format and return it directly
-    # 140-145
-    if N == 1  # 1 dimension
-        return to_expanded(order, vals)
     end
 
     # construct Direct Format
     BasisMatrix{Direct,val_type}(out_order, vals)
 end
 
-function BasisMatrix(basis::Basis, ::Expanded,
-                     x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
+function BasisMatrix{T2}(::Type{T2}, basis::Basis, ::Expanded,
+                         x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
     # create direct form, then convert to expanded
-    bsd = BasisMatrix(basis, Direct(), x, order)
+    bsd = BasisMatrix(T2, basis, Direct(), x, order)
     convert(Expanded, bsd, bsd.order)
 end
 
-function BasisMatrix{N,BF,TV<:AbstractVector}(basis::Basis{N,BF}, ::Tensor,
-    x::AbstractVector{TV}=nodes(basis)[2], order=0)
-    
+function BasisMatrix{N,BT,T2}(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
+                              x::TensorX=nodes(basis)[2], order=0)
+
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
     out_format = Tensor()
-    val_type = _vals_type(BF)
-    vals = Array(val_type, maximum(numbases), N)
+    val_type = bmat_type(T2, basis)
+    vals = Array{val_type}(maximum(numbases), N)
 
     # construct tensor base
-    for j=1:N
+    for j in 1:N
         # 113-117
         if (m > 1)
             orderj = unique(order[:, j])
@@ -291,13 +264,31 @@ function BasisMatrix{N,BF,TV<:AbstractVector}(basis::Basis{N,BF}, ::Tensor,
 
         #118-122
         if length(orderj) == 1
-            vals[1, j] = evalbase(basis.params[j], x[j], orderj)
+            vals[1, j] = evalbase(T2, basis.params[j], x[j], orderj[1])
         else
-            vals[orderj-minorder[j]+1, j] = evalbase(basis[:params][j], x[j],
-                                                     orderj)
+            vals[orderj-minorder[j]+1, j] = evalbase(T2, basis.params[j], x[j], orderj)
         end
     end
 
-    N == 1 ? to_expanded(order, vals) :
-             BasisMatrix{Tensor,val_type}(out_order, vals)
+    BasisMatrix{Tensor,val_type}(out_order, vals)
+end
+
+
+# method to allow passing types instead of instances of ABSR
+function BasisMatrix{BST<:ABSR,T2}(::Type{T2}, basis, ::Type{BST}, x, order=0)
+    BasisMatrix(T2, basis, BST(), x, order)
+end
+
+# default method without intermediate types
+function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::TBM, x, order=0)
+    BasisMatrix(Void, basis, tbm, x, order)
+end
+
+function BasisMatrix{BST<:ABSR}(basis, ::Type{BST}, x, order=0)
+    BasisMatrix(basis, BST(), x, order)
+end
+
+# method without x
+function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::Union{Type{TBM},TBM})
+    BasisMatrix(Void, basis, tbm)
 end

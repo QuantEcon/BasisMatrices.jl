@@ -1,16 +1,18 @@
 @testset "Testing logic using strings" begin
-    Base.one{T<:AbstractString}(::Type{T}) = "one "
+    if VERSION < v"0.6-"
+        Base.one{T<:AbstractString}(::Type{T}) = ""
+    end
     z = ["x ", "y ", "z "]
 
-    want_1 = ["one " "one x " "one y " "one z "]
+    want_1 = ["" "x " "y " "z "]
     @test complete_polynomial(reshape(z, 1, length(z)), 1) == want_1
     # Test vector methods to make sure generates same thing as matrix methods
-    @test complete_polynomial(z, 1) == want_1[:]
+    @test complete_polynomial(z, 1) == vec(want_1)
 
-    want_2 = ["one " "one x " "one x x " "one x y " "one x z " "one y " "one y y " "one y z " "one z " "one z z "]
+    want_2 = ["" "x " "x x " "x y " "x z " "y " "y y " "y z " "z " "z z "]
     @test complete_polynomial(reshape(z, 1, length(z)), 2) == want_2
     # Test vector methods to make sure generates same thing as matrix methods
-    @test complete_polynomial(z, 2) == want_2[:]
+    @test complete_polynomial(z, 2) == vec(want_2)
 
 end
 
@@ -20,11 +22,10 @@ end
     the_zeros = zeros(size(z, 1))
     for d in 1:5
         n_comp = n_complete(size(z, 2), d)
-
         # Test basis matrices
-        buff_d = Array(Float64, size(z, 1), n_comp)
+        buff_d = Array{Float64}(size(z, 1), n_comp)
         out_d = complete_polynomial(z, d)
-        complete_polynomial!(z, d, buff_d)
+        complete_polynomial!(buff_d, z, d)
         @test size(out_d, 1) == size(z, 1)
         @test size(out_d, 2) == n_comp
         @test all(isapprox.(out_d[:, 1], the_ones))
@@ -34,9 +35,9 @@ end
         @test all(isapprox.(out_d, buff_d))
 
         # Test derivatives
-        buff_der_d = Array(Float64, size(z, 1), n_comp)
+        buff_der_d = Array{Float64}(size(z, 1), n_comp)
         out_der_d = complete_polynomial(z, d, 1)
-        complete_polynomial!(z, d, 1, buff_der_d)
+        complete_polynomial!(buff_der_d, z, d, 1)
         @test size(out_der_d, 1) == size(z, 1)
         @test size(out_der_d, 2) == n_comp
         @test all(isapprox.(out_der_d[:, 1], the_zeros))

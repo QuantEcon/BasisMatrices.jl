@@ -2,33 +2,65 @@
 # B-Spline Basis #
 # -------------- #
 
-# constructor to accept spline params arguments, do some pre-processing
-function Basis(::Spline, breaks::Vector, evennum::Int, k::Int)
-    # error handling
-    k < 0 && error("spline order must be positive")
-    length(breaks) < 2 && error("Must have at least two breakpoints")
-    any(diff(breaks) .< 0) && error("Breakpoints must be non-decreasing")
+immutable Spline <: BasisFamily end
 
-    if evennum == 0  # 43
-        if length(breaks) == 2  # 44
-            evennum = 2
-        end
-    else
-        if length(breaks) == 2
-            breaks = linspace(breaks[1], breaks[2], evennum)
+type SplineParams{T<:AbstractVector} <: BasisParams
+    breaks::T
+    evennum::Int
+    k::Int
+
+    # constructor to accept spline params arguments, do some pre-processing
+    function (::Type{SplineParams{T}}){T}(breaks::T, evennum::Int, k::Int)
+        # error handling
+        k < 0 && error("spline order must be positive")
+        length(breaks) < 2 && error("Must have at least two breakpoints")
+        any(diff(breaks) .< 0) && error("Breakpoints must be non-decreasing")
+
+        if evennum == 0  # 43
+            if length(breaks) == 2  # 44
+                evennum = 2
+            end
         else
-            error("Breakpoint squence must contain 2 values when evennum > 0")
+            if length(breaks) == 2
+                breaks = linspace(breaks[1], breaks[2], evennum)
+            else
+                error("Breakpoint squence must contain 2 values when evennum > 0")
+            end
         end
+        new{T}(breaks, evennum, k)
     end
 
-    n = length(breaks) + k - 1
-    a = breaks[1]
-    b = breaks[end]
-    Basis(Spline(), n, a, b, SplineParams(breaks, evennum, k))
 end
 
-# define methods for SplineParams type
-Basis(p::SplineParams) = Basis(Spline(), p.breaks, p.evennum, p.k)
+SplineParams{T<:AbstractVector}(breaks::T, evennum::Int, k::Int) =
+    SplineParams{T}(breaks, evennum, k)
+
+# constructor to take a, b, n and form linspace for breaks
+SplineParams(n::Int, a::Real, b::Real, k::Int=3) =
+    SplineParams(linspace(a, b, n), 0, k)
+
+## BasisParams interface
+# define these methods on the type, the instance version is defined over
+# BasisParams
+family{T<:SplineParams}(::Type{T}) = Spline
+family_name{T<:SplineParams}(::Type{T}) = "Spline"
+Base.issparse{T<:SplineParams}(::Type{T}) = true
+@generated function Base.eltype{T<:SplineParams}(::Type{T})
+    elT = eltype(T.parameters[1])
+    elT <: Integer ? Float64 : elT
+end
+
+# methods that only make sense for instances
+Base.min(p::SplineParams) = minimum(p.breaks)
+Base.max(p::SplineParams) = maximum(p.breaks)
+Base.length(p::SplineParams) = length(p.breaks) + p.k - 1
+
+function Base.show(io::IO, p::SplineParams)
+    m = string("$(p.k) order spline interpoland parameters from ",
+               "$(p.breaks[1]), $(p.breaks[end])")
+    print(io, m)
+end
+
 
 """
 Construct interpolation nodes, given SplineParams
@@ -56,6 +88,7 @@ function nodes(p::SplineParams)
     x
 end
 
+# TODO: define method derivative_op(::Type{SplineSparse}, p::SplineParams, order::Int)
 function derivative_op(p::SplineParams, order=1)
     breaks, evennum, k = p.breaks, p.evennum, p.k
 
@@ -66,13 +99,13 @@ function derivative_op(p::SplineParams, order=1)
     kk = max(k - 1, k - order - 1)
     augbreaks = vcat(fill(breaks[1], kk), breaks, fill(breaks[end], kk))
 
-    D = Array(SparseMatrixCSC{Float64,Int64}, abs(order), 1)
+    D = Array{SparseMatrixCSC{Float64,Int64}}(abs(order), 1)
 
     if order > 0  # derivative
         temp = k ./ (augbreaks[k+1:n+k-1] - augbreaks[1:n-1])
         D[1] = spdiagm((-temp, temp), 0:1, n-1, n)
 
-        for i=2:order
+        for i in 2:order
             temp = (k+1-i) ./ (augbreaks[k+1:n+k-i] - augbreaks[i:n-1])
             D[i] = spdiagm((-temp, temp), 0:1, n-i, n+1-i)*D[i-1]
         end
@@ -108,6 +141,9 @@ end
 
 evalbase(p::SplineParams, x=nodes(p), order::Int=0) = evalbase(p, x, [order])[1]
 
+evalbase(::Type{SplineSparse}, p::SplineParams, x=nodes(p), order::Int=0) =
+    evalbase(SplineSparse, p, x, [order])[1]
+
 """
 Evaluate spline basis matrices for a certain order derivative at x
 
@@ -129,9 +165,11 @@ at each point in `x`. Each column represents a basis function.
 function evalbase(p::SplineParams, x, order::AbstractVector{Int})
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
-    bas = zeros(m, p.k-minorder+1)  # 73
-    bas[:, 1] = 1.0  # 74
-    B = Array(SparseMatrixCSC{Float64,Int}, length(order))  # 75
+    max_repeat = p.k-minorder + 1
+    T = eltype(p)
+    bas = zeros(T, m, max_repeat)  # 73
+    bas[:, 1] = one(T)  # 74
+    B = Array{SparseMatrixCSC{T,Int}}(length(order))  # 75
 
     # 76
     if maximum(order) > 0
@@ -143,8 +181,14 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
         I = derivative_op(p, minorder)[1]
     end
 
-    for j=1:p.k-minorder  # 78
-        for jj=j:-1:1  # 79
+    # We know what the rows and columns will be, we just compute them once and
+    # then extract chunks as we need them.
+    # note: I benchmarked and the version with collect was (2-5)x faster
+    r = repmat(collect(1:m), max_repeat)
+    c = (minorder-p.k:0)' .+ ind
+
+    for j in 1:p.k-minorder  # 78
+        for jj in j:-1:1  # 79
             for ix in eachindex(ind)
                 b0 = augbreaks[ind[ix]+jj-j]  # 80
                 b1 = augbreaks[ind[ix]+jj]  # 81
@@ -158,12 +202,8 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
         ii = findfirst(order, p.k-j)  # 87
         if ii > 0
             # Put values in appropriate columns of a sparse matrix
-            r = collect(1:m)''  # 91
-            r = r[:, fill(1, p.k-order[ii]+1)]  # 91
-            c = collect((order[ii] - p.k:0) - (order[ii] - minorder))'  # 92
-            c = c[fill(1, m), :] + ind[:, fill(1, p.k-order[ii] + 1)]  # 93
-            B[ii] = sparse(vec(r), vec(c), vec(bas[:, 1:p.k-order[ii]+1]),
-                           m, n-order[ii])
+            N = m * (p.k-order[ii]+1)
+            B[ii] = sparse(view(r, 1:N), view(c, 1:N), view(bas, 1:N), m, n-order[ii])
 
             # 96-100
             if order[ii] > 0
@@ -175,4 +215,46 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
     end
 
     B
+end
+
+function evalbase(::Type{SplineSparse}, p::SplineParams, x,
+                  order::AbstractVector{Int})
+    n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
+
+    max_repeat = p.k-minorder + 1
+    T = eltype(p)
+    bas = zeros(T, max_repeat, m)
+    bas[1, :] = one(T)
+    B = Array{SplineSparse{T,Int}}(length(order))  # 75
+
+    if maximum(order) > 0
+        error("not supported yet")
+        D = derivative_op(p, maximum(order))[1]
+    end
+
+    if minorder < 0
+        error("not supported yet")
+        I = derivative_op(p, minorder)[1]
+    end
+
+    for j in 1:p.k-minorder  # 78
+        for ix in eachindex(ind)
+            for jj in j:-1:1  # 79
+                b0 = augbreaks[ind[ix]+jj-j]  # 80
+                b1 = augbreaks[ind[ix]+jj]  # 81
+                temp = bas[jj, ix] / (b1 - b0)  # 82
+                bas[jj+1, ix] = (x[ix] - b0) * temp + bas[jj+1, ix]  # 83
+                bas[jj, ix] = (b1-x[ix]) * temp  # 84
+            end
+        end
+
+        # bas now contains the order `j` spline basis
+        ii = findfirst(order, p.k-j)  # 87
+        if ii > 0
+            ord = order[ii]
+            cols = (ord - p.k) + ind
+            B[ii] = SplineSparse{T,Int,1,p.k-ord+1}(n-ord, vec(bas), cols)
+        end
+    end
+    return B
 end

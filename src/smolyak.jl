@@ -35,12 +35,17 @@ immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
             d::Int, mu::Tmu, a::Vector{T}, b::Vector{T}
         )
         d < 2 && error("You passed d = $d. d must be greater than 1")
-        mu < 1 && error("You passed mu = $mu. mu must be greater than 1")
         if length(mu) > 1
             # working on building an anisotropic grid
             if length(mu) != d
                 error("mu must have d elements. It has $(length(mu))")
             end
+
+            if any(mu .< 1)
+                error("All elements of mu must be greater than 1 (recieved $mu)")
+            end
+        else
+            mu < 1 && error("You passed mu = $mu. mu must be greater than 1")
         end
 
         inds = smol_inds(d, mu)
@@ -93,7 +98,7 @@ cube2dom(pts::AbstractMatrix, sp::SmolyakParams) = cube2dom(pts, sp.a, sp.b)
 # BasisParams
 family{T<:SmolyakParams}(::Type{T}) = Smolyak
 family_name{T<:SmolyakParams}(::Type{T}) = "Smolyak"
-@generated Base.eltype{T<:SmolyakParams}(::Type{T}) = T.parameters[1]
+Base.eltype{T1,T2}(::Type{SmolyakParams{T1,T2}}) = T1
 
 # methods that only make sense for instances
 Base.min(p::SmolyakParams) = p.a
@@ -107,7 +112,7 @@ function Base.show(io::IO, p::SmolyakParams)
 end
 
 # TODO: fix this
-function Base.length{T}(sp::SmolyakParams{T,Int})
+function Base.length{T,Ti<:Integer}(sp::SmolyakParams{T,Ti})
     d, mu = sp.d, sp.mu
     mu == 1 ? 2d - 1 :
     mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ):

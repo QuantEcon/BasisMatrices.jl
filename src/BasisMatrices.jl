@@ -45,7 +45,7 @@ export gridmake, gridmake!, ckron
 @compat abstract type BasisFamily end
 @compat abstract type BasisParams end
 const IntSorV = Union{Int, AbstractVector{Int}}
-@static if VERSION >= v"0.6-"
+@static if VERSION >= v"0.6.0-dev.2123"
     const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{<:AbstractVector}}
 else
     const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}

@@ -184,7 +184,7 @@ function ckronxi(b::Array, c, ind=1:length(b))
     reshape(z, mm, size(c, 2))  # 39
 end
 
-@static if VERSION >= v"0.6-"
+@static if VERSION >= v"0.6.0-dev.2123"
     immutable RowKron{T<:Tuple{Vararg{<:AbstractMatrix}}}
         B::T
     end

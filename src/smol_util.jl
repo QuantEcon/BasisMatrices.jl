@@ -36,9 +36,10 @@ function Base.next(p::Permuter, i::Int)
     end
 end
 
-function cartprod(arrs, out=Array(eltype(arrs[1]),
-                                  prod([length(a) for a in arrs]),
-                                  length(arrs)))
+function cartprod(arrs, out=Array{eltype(arrs[1])}(
+                                prod([length(a) for a in arrs]),
+                                length(arrs))
+                                )
     sz = Int[length(a) for a in arrs]
     k = 1
     for v in product(arrs...)
@@ -61,7 +62,7 @@ function m_i(i::Int)
 end
 
 function cheby2n{T<:Number}(x::AbstractArray{T}, n::Int, kind::Int=1)
-    out = Array(T, size(x)..., n+1)
+    out = Array{T}(size(x)..., n+1)
     cheby2n!(out, x, n, kind)
 end
 

@@ -90,6 +90,9 @@ I = manualint1(nod,params.a[1],params.b[1])
         @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35]))
         @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35], 1))
         @test Float64 == eltype(@inferred BasisMatrices.evalbase(p, [0.25, 0.35]))
+        @test Float32 == eltype(@inferred nodes(p))
+        @test Float32 == eltype(@inferred nodes(p, 1))
+        @test Float32 == eltype(@inferred nodes(p, 2))
     end
 
 end  # testset

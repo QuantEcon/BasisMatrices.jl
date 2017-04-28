@@ -120,13 +120,13 @@ function nodes(b::Basis)  # funnode method
     return x, xcoord
 end
 
-@generated function bmat_type{N,TP,TO}(::Type{TO}, bm::Basis{N,TP})
+@generated function bmat_type{N,TP,TO}(::Type{TO}, bm::Basis{N,TP}, x=1.0)
     if N == 1
-        out = bmat_type(TO, TP.parameters[1])
+        out = bmat_type(TO, TP.parameters[1], x)
     else
-        out = bmat_type(TO, TP.parameters[1])
+        out = bmat_type(TO, TP.parameters[1], x)
         for this_TP in TP.parameters[2:end]
-            this_out = bmat_type(TO, this_TP)
+            this_out = bmat_type(TO, this_TP, x)
             if this_out != out
                 out = AbstractMatrix{promote_type(eltype(out), eltype(this_out))}
             end
@@ -136,3 +136,4 @@ end
 end
 
 bmat_type(b::Basis) = bmat_type(Void, b)
+bmat_type(b::Basis, x) = bmat_type(Void, b, x)

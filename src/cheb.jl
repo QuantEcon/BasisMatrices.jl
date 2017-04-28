@@ -37,10 +37,11 @@ function Base.show(io::IO, p::ChebParams)
     print(io, m)
 end
 
-function nodes(p::ChebParams, ::Type{Val{0}})
+function nodes{T}(p::ChebParams{T}, ::Type{Val{0}})
     s = (p.b-p.a) / 2  # 21
     m = (p.b+p.a) / 2  # 22
-    k = π*(0.5:(p.n - 0.5))  # 25
+    half = convert(T, 1/2)
+    k = π*(half:(p.n - half))  # 25
     m .- cos.(k ./ p.n) .* s  # 26
 end
 
@@ -57,15 +58,15 @@ function nodes(p::ChebParams, ::Type{Val{1}})
     x
 end
 
-function nodes(p::ChebParams, ::Type{Val{2}})
+function nodes{T}(p::ChebParams{T}, ::Type{Val{2}})
     s = (p.b-p.a) / 2  # 21
     m = (p.b+p.a) / 2  # 22
-    k = pi*(0:(p.n - 1))  # 33
+    k = pi*(zero(T):(p.n - one(T)))  # 33
     m .- cos.(k ./ (p.n-1)) .* s  # 34
 end
 
 # chebnode.m -- DONE
-nodes(p::ChebParams, nodetype=0) = nodes(p, Val{min(2, nodetype)})
+nodes(p::ChebParams, nodetype::Integer=0) = nodes(p, Val{min(2, nodetype)})
 
 function derivative_op(p::ChebParams, x, order=1)
     n, a, b = p.n, p.a, p.b

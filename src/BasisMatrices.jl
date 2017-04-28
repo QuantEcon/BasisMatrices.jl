@@ -84,20 +84,29 @@ basis_eltype
 # corresponding basis. `Spline` and `Lin` use sparse, `Cheb` uses dense
 # a hybrid must fall back to a generic AbstractMatrix{Float64}
 # the default is just a dense matrix
-bmat_type{TP<:BasisParams}(::Type{TP}) = Matrix{eltype(TP)}
-bmat_type{TP<:BasisParams,T2}(::Type{T2}, ::Type{TP}) = Matrix{eltype(TP)}
+# because there is only one dense version, we will start with the sparse
+# case and overload for Cheb
+bmat_type{TP<:BasisParams}(::Type{TP}, x) = SparseMatrixCSC{basis_eltype(TP, x),Int}
+bmat_type{TP<:BasisParams,T2}(::Type{T2}, ::Type{TP}, x) = bmat_type(TP, x)
+function bmat_type{TP<:BasisParams,T2<:SplineSparse}(::Type{T2}, ::Type{TP}, x)
+    SplineSparse{basis_eltype(TP, x),Int}
+end
 
-# default to SparseMatrixCSC
-bmat_type{T}(::Union{Type{LinParams{T}},Type{SplineParams{T}}}) = SparseMatrixCSC{eltype(T),Int}
-bmat_type{T,T2}(::Type{T2}, ::Union{Type{LinParams{T}},Type{SplineParams{T}}}) = SparseMatrixCSC{eltype(T),Int}
+bmat_type{T<:ChebParams}(::Type{T}, x) = Matrix{basis_eltype(T, x)}
+function bmat_type{TP<:ChebParams,T2<:SplineSparse}(::Type{T2}, ::Type{TP}, x)
+    bmat_type(TP, x)
+end
 
-# specialize for SplineSparse
-bmat_type{T,T2<:SplineSparse}(::Type{T2}, ::Union{Type{LinParams{T}},Type{SplineParams{T}}}) =
-    SplineSparse{eltype(T),Int}
+# version where there isn't an x passed
+bmat_type{TP<:BasisParams}(::Type{TP}) = bmat_type(TP, one(eltype(TP)))
+function bmat_type{TP<:BasisParams,T2}(::Type{T2}, ::Type{TP})
+    bmat_type(T2, TP, one(eltype(TP)))
+end
 
 # add methods to instances
 bmat_type{T<:BasisParams}(::T) = bmat_type(T)
 bmat_type{TF<:BasisParams,T2}(ss::Type{T2}, ::TF) = bmat_type(T2, TF)
+bmat_type{TF<:BasisParams,T2}(ss::Type{T2}, ::TF, x) = bmat_type(T2, TF, x)
 
 # default method for evalbase with extra type hint is to just ignore the extra
 # type hint

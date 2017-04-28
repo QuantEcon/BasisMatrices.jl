@@ -66,7 +66,7 @@
                          (SplineParams{Vector{Float32}}, SparseMatrixCSC{Float32,Int}),
                          (LinParams{AbstractVector{Float16}}, SparseMatrixCSC{Float16,Int}),
                          (ChebParams{Complex{Float64}}, Matrix{Complex{Float64}})]
-            @test TM == @inferred BasisMatrices.bmat_type(TP)
+            @test TM == @inferred BasisMatrices.bmat_type(TP, one(eltype(TP)))
         end
 
         @test BasisMatrices.bmat_type(SplineSparse, mb) == AbstractMatrix{Float64}
@@ -188,6 +188,22 @@
     @testset "Printing" begin
         iob = IOBuffer()
         show(iob, Φ_tensor)
+    end
+
+    @testset "non Float64 eltype" begin
+        pc = ChebParams(10, Float32(-3.0), Float32(1.0))
+        pl = LinParams(Float32[0.1, 0.2, 0.3, 0.4, 0.5])
+        ps = SplineParams(Float32[0.1, 0.2, 0.3, 0.4, 0.5], 0, 3)
+        b = Basis((pc, pl, ps))
+        bs = @inferred BasisMatrix(b, Direct(), nodes(b)[1])
+        @test eltype(bs.vals) == AbstractMatrix{Float32}
+
+        b2 = Basis((pl, ps))
+        bs2 = @inferred BasisMatrix(b2, Direct(), nodes(b2)[1])
+        @test eltype(bs2.vals) == SparseMatrixCSC{Float32,Int}
+
+        bs3 = @inferred BasisMatrix(SplineSparse, b2, Direct(), nodes(b2)[1])
+        @test eltype(bs3.vals) == SplineSparse{Float32,Int}
     end
 
 end  # testset

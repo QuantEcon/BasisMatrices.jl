@@ -212,7 +212,7 @@ function BasisMatrix{N,BF,T2}(::Type{T2}, basis::Basis{N,BF}, ::Direct,
     # 76-77
     out_order = minorder
     out_format = Direct()
-    val_type = bmat_type(T2, basis)
+    val_type = bmat_type(T2, basis, x)
     vals = Array{val_type}(maximum(numbases), N)
 
     # now do direct form, will convert to expanded later if needed
@@ -250,7 +250,7 @@ function BasisMatrix{N,BT,T2}(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
     out_format = Tensor()
-    val_type = bmat_type(T2, basis)
+    val_type = bmat_type(T2, basis, x[1])  # TODO: reduce(promot_type, eltype.(x))
     vals = Array{val_type}(maximum(numbases), N)
 
     # construct tensor base

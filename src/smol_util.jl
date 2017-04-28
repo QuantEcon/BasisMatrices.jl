@@ -57,8 +57,7 @@ end
 
 function m_i(i::Int)
     i < 0 && error("DomainError: i must be positive")
-    else_part = ifelse(i == 1, 1, 2^(i - 1) + 1)
-    ifelse(i == 0, 0, else_part)
+    i == 0 ? 0 : i == 1 ? 1 : 2^(i - 1) + 1
 end
 
 function cheby2n{T<:Number}(x::AbstractArray{T}, n::Int, kind::Int=1)
@@ -73,7 +72,7 @@ of `out` indexes the chebyshev polynomials. All inner dimensions correspond to
 points in `x`.
 """
 function cheby2n!{T<:Number,N}(out::AbstractArray{T}, x::AbstractArray{T,N},
-                               n::Int, kind::Int)
+                               n::Int, kind::Int=1)
     if size(out) != tuple(size(x)..., n+1)
         error("out must have dimensions $(tuple(size(x)..., n+1))")
     end
@@ -120,6 +119,8 @@ $A_{n} = S_{n}$ [evens] except for $A_1= \{0\}$  and $A_2 = \{-1, 1\}$.
 Additionally, $A_{n} = A_{n+1}$ [odds] This prevents the calculation of these
 nodes repeatedly. Thus we only need to calculate biggest of the S_n's to build
 the sequence of $A_n$ 's
+
+See section 3.2 of the paper...
 """
 function a_chain(n::Int)
     sn = s_n(n)
@@ -186,7 +187,7 @@ function smol_inds(d::Int, mu::Int)
     end
 
     # PERF: size_hint here if it is slow
-    true_inds = Vector{Int}[ones(Int64, d)]  # we will always have (1, 1, ...,  1)
+    true_inds = Vector{Int}[ones(Int, d)]  # we will always have (1, 1, ...,  1)
     for val in poss_inds
         for el in Permuter(val)
             push!(true_inds, el)
@@ -240,20 +241,18 @@ end
 Build indices specifying all the Cartesian products of Chebychev polynomials
 needed to build Smolyak polynomial
 """
-function poly_inds(d::Int, mu::IntSorV, inds::Vector{Vector{Int}}=smol_inds(d, mu))
+function poly_inds(d::Int, mu::IntSorV, inds::Vector{Vector{Int}}=smol_inds(d, mu))::Matrix{Int}
     phi_n = phi_chain(maximum(mu) + 1)
-    vcat([cartprod([phi_n[i] for i in el]) for el in inds]...)::Matrix{Int}
+    vcat([cartprod([phi_n[i] for i in el]) for el in inds]...)
 end
-
-
 
 """
 Use disjoint Smolyak sets to construct Smolyak grid of degree `d` and density
 parameter `mu`
 """
-function build_grid(d::Int, mu::IntSorV, inds::Vector{Vector{Int}}=smol_inds(d, mu))
+function build_grid(d::Int, mu::IntSorV, inds::Vector{Vector{Int}}=smol_inds(d, mu))::Matrix{Float64}
     An = a_chain(maximum(mu) + 1)  # use maximum in case mu is Vector
-    vcat([cartprod([An[i] for i in el]) for el in inds]...)::Matrix{Float64}
+    vcat([cartprod([An[i] for i in el]) for el in inds]...)
 end
 
 
@@ -277,7 +276,6 @@ function build_B!{T}(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
     @inbounds for ind in 1:npolys, k in 1:d
         b = b_inds[ind, k]
         for i in 1:npts
-            # TODO: can we compute chebyshev polys on the fly here??
             out[i, ind] *= Ts[i, k, b]
         end
     end
@@ -286,7 +284,7 @@ function build_B!{T}(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
 end
 
 function build_B(d::Int, mu::IntSorV, pts::Matrix{Float64}, b_inds::Matrix{Int64})
-    build_B!(Array(Float64, size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
+    build_B!(Array{Float64}(size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
 end
 
 function dom2cube!(out::AbstractMatrix, pts::AbstractMatrix,
@@ -328,5 +326,5 @@ end
 for f in [:dom2cube!, :cube2dom!]
     no_bang = Symbol(string(f)[1:end-1])
     @eval $(no_bang){T}(pts::AbstractMatrix{T}, lb::AbstractVector, ub::AbstractVector) =
-        $(f)(Array(T, size(pts, 1), length(lb)), pts, lb, ub)
+        $(f)(Array{T}(size(pts, 1), length(lb)), pts, lb, ub)
 end

@@ -231,7 +231,7 @@ _ncol(x::AbstractArray) = size(x, 2)
 shape_c_expr{T<:AbstractVector}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))))
 shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))..., size(_c, 2)))
 
-@static if VERSION >= v"0.6-"
+@static if VERSION >= v"0.6.0-dev.2123"
     const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
 else
     const RKSS = RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}}

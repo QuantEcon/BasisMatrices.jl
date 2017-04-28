@@ -60,13 +60,13 @@ I = manualint1(nod,params.a[1],params.b[1])
     end
 
     @testset "test derivative/integral" begin
-        deriv, params_d = BasisMatrices.derivative_op(params,1)
-        int, params_i = BasisMatrices.derivative_op(params,-1)
+        deriv, params_d = BasisMatrices.derivative_op(params, nod, 1)
+        int, params_i = BasisMatrices.derivative_op(params, nod, -1)
 
         @test params_d.n  ==  params.n[1]-1
         @test params_i.n  ==  params.n[1]+1
-        @test ≈([params_d.a,params_d.b], [params.a[1],params.b[1]], atol=1e-15)
-        @test ≈([params_i.a,params_i.b], [params.a[1],params.b[1]], atol=1e-15)
+        @test ≈([params_d.a, params_d.b], [params.a[1], params.b[1]], atol=1e-15)
+        @test ≈([params_i.a, params_i.b], [params.a[1], params.b[1]], atol=1e-15)
     end
 
     @testset "test evalbase" begin
@@ -84,5 +84,12 @@ I = manualint1(nod,params.a[1],params.b[1])
 
     @test_throws DimensionMismatch BasisMatrices.evalbasex!(rand(2, 7), rand(4), params, rand(4))
     @test_throws DimensionMismatch BasisMatrices.evalbasex!(rand(4, 6), rand(4), params, rand(4))
+
+    @testset "non Float64 eltype" begin
+        p = ChebParams(10, Float32(-3.0), Float32(1.0))
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35]))
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35], 1))
+        @test Float64 == eltype(@inferred BasisMatrices.evalbase(p, [0.25, 0.35]))
+    end
 
 end  # testset

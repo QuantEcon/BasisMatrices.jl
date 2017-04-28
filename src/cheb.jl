@@ -4,7 +4,7 @@
 
 immutable Cheb <: BasisFamily end
 
-type ChebParams{T} <: BasisParams
+type ChebParams{T<:Number} <: BasisParams
     n::Int
     a::T
     b::T
@@ -16,8 +16,7 @@ type ChebParams{T} <: BasisParams
     end
 end
 
-
-ChebParams{T}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
+ChebParams{T<:Number}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
 ChebParams{T<:Integer}(n::Int, a::T, b::T) = ChebParams(n, Float64(a), Float64(b))
 
 ## BasisParams interface
@@ -68,31 +67,32 @@ end
 # chebnode.m -- DONE
 nodes(p::ChebParams, nodetype=0) = nodes(p, Val{min(2, nodetype)})
 
-function derivative_op(p::ChebParams, order=1)
+function derivative_op(p::ChebParams, x, order=1)
     n, a, b = p.n, p.a, p.b
     if order > 0
         # TODO: figure out some caching mechanism that avoids globals
-        D = Array{SparseMatrixCSC{Float64,Int64}}(max(2, order))  # 49
-        i = repeat(collect(1:n), outer=[1, n]); j = i'  # 50
+        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(max(2, order)) # 49
+        i = repmat(1:n', 1, n)
+        j = i'  # 50
 
         # 51
         inds = find((rem.(i + j, 2) .== 1) .& (j .> i))
         r, c = similar(inds), similar(inds)
-        for i in 1:length(inds)
-            r[i], c[i] = ind2sub((n, n), inds[i])
+        for ix in 1:length(inds)
+            r[ix], c[ix] = ind2sub((n, n), inds[ix])
         end
 
         d = sparse(r, c, (4/(b-a)) * (vec(j[1, c])-1), n-1, n)  # 52
         d[1, :] ./= 2  # 53
         D[1] = d  # 54
-        for ii=2:max(2, order)
+        for ii in 2:max(2, order)
             D[ii] = d[1:n-ii, 1:n-ii+1] * D[ii-1]  # 56
         end
     else
-        D = Array{SparseMatrixCSC{Float64,Int64}}(abs(order))  # 64
+        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(abs(order))  # 64
         nn = n - order  # 65
-        i = (0.25 * (b - a)) ./(1:nn)  # 66
-        d = sparse(vcat(1:nn, 1:nn-2), vcat(1:nn, 3:nn), vcat(i, -i[1:nn-2]),
+        z = (0.25 * (b - a)) ./(1:nn)  # 66
+        d = sparse(vcat(1:nn, 1:nn-2), vcat(1:nn, 3:nn), vcat(z, -z[1:nn-2]),
                    nn, nn)  # 67
         d[1, 1] *= 2  # 68
         d0 = ((-1).^(0:nn-1)') .* sum(d, 1)  # 69
@@ -110,6 +110,7 @@ function evalbase(p::ChebParams, x=nodes(p, 1), order::Int=0, nodetype::Int=1)
     minorder = min(0, order)  # 30
 
     # compute 0-order basis
+    local bas::Matrix{basis_eltype(p,x)}  # stupid type stability...
     if nodetype == 0
         temp = ((n-0.5):-1:0.5)''  # 41
         bas = cos.((pi./n).*temp.*(0:(n-1-minorder))')  # 42
@@ -118,7 +119,7 @@ function evalbase(p::ChebParams, x=nodes(p, 1), order::Int=0, nodetype::Int=1)
     end
 
     if order != 0
-        D = derivative_op(p, order)[1]
+        D = derivative_op(p, x, order)[1]
         B = bas[:, 1:n-order]*D[abs(order)]
     else
         B = bas
@@ -133,16 +134,18 @@ function evalbase(p::ChebParams, x, order::AbstractVector{Int}, nodetype::Int=1)
     maxorder = maximum(order)
 
     # compute 0-order basis
-    if nodetype == 0
-        temp = ((n-0.5):-1:0.5)''  # 41
-        bas = cos.((pi./n).*temp.*(0:(n-1-minorder))')  # 42
-    else
+    # if nodetype == 0
+    #     temp = ((n-0.5):-1:0.5)''  # 41
+    #     bas = convert(Matrix{basis_eltype(p, x)},
+    #         cos.((pi./n).*temp.*(0:(n-1-minorder))')
+    #     )  # 42
+    # else
         bas = evalbasex(ChebParams(n-minorder, a, b), x)  # 44
-    end
+    # end
 
-    B = Array{Matrix{Float64}}(length(order))
-    if maxorder > 0 D = derivative_op(p, maxorder)[1] end
-    if minorder < 0 I = derivative_op(p, minorder)[1] end
+    B = Array{Matrix{basis_eltype(p, x)}}(length(order))
+    if maxorder > 0 D = derivative_op(p, x, maxorder)[1] end
+    if minorder < 0 I = derivative_op(p, x, minorder)[1] end
 
     for ii=1:length(order)
         if order[ii] == 0
@@ -159,7 +162,7 @@ end
 
 _unscale{T<:Number}(p::ChebParams, x::T) = (2/(p.b-p.a)) * (x-(p.a+p.b)/2)
 
-function evalbasex!{T<:Number}(out::Matrix{Float64}, z::AbstractVector{T},
+function evalbasex!{T<:Number}(out::AbstractMatrix, z::AbstractVector{T},
                                p::ChebParams, x::AbstractVector{T})
     if size(out) != (size(x, 1), p.n)
         throw(DimensionMismatch("out must be (size(x, 1), p.n)"))
@@ -186,7 +189,7 @@ function evalbasex!{T<:Number}(out::Matrix{Float64}, z::AbstractVector{T},
     out
 end
 
-function evalbasex!(out::Matrix{Float64}, p::ChebParams, x)
+function evalbasex!(out::AbstractMatrix, p::ChebParams, x)
     z = similar(x)
     evalbasex!(out, z, p, x)
 end
@@ -194,6 +197,6 @@ end
 function evalbasex(p::ChebParams, x)
     m = size(x, 1)
     n = p.n
-    bas = Array{Float64}(m, n)
+    bas = Array{basis_eltype(p, x)}(m, n)
     evalbasex!(bas, p, x)
 end

@@ -51,4 +51,12 @@
     @test BasisMatrices.family(params) == Spline
     @test BasisMatrices.family_name(params) == "Spline"
     @test issparse(params)
+
+
+    @testset "non Float64 eltypes" begin
+        p = SplineParams(Float32[0.1, 0.2, 0.3, 0.4, 0.5], 0, 3)
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35]))
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35], 1))
+        @test Float64 == eltype(@inferred BasisMatrices.evalbase(p, [0.25, 0.35]))
+    end
 end

@@ -45,8 +45,8 @@ SplineParams(n::Int, a::Real, b::Real, k::Int=3) =
 family{T<:SplineParams}(::Type{T}) = Spline
 family_name{T<:SplineParams}(::Type{T}) = "Spline"
 Base.issparse{T<:SplineParams}(::Type{T}) = true
-@generated function Base.eltype{T<:SplineParams}(::Type{T})
-    elT = eltype(T.parameters[1])
+function Base.eltype{T}(::Type{SplineParams{T}})
+    elT = eltype(T)
     elT <: Integer ? Float64 : elT
 end
 
@@ -89,7 +89,7 @@ function nodes(p::SplineParams)
 end
 
 # TODO: define method derivative_op(::Type{SplineSparse}, p::SplineParams, order::Int)
-function derivative_op(p::SplineParams, order=1)
+function derivative_op(p::SplineParams, x, order=1)
     breaks, evennum, k = p.breaks, p.evennum, p.k
 
     any(order .> k) && error("Order of differentiation can't be greater than k")
@@ -99,7 +99,7 @@ function derivative_op(p::SplineParams, order=1)
     kk = max(k - 1, k - order - 1)
     augbreaks = vcat(fill(breaks[1], kk), breaks, fill(breaks[end], kk))
 
-    D = Array{SparseMatrixCSC{Float64,Int64}}(abs(order), 1)
+    D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(abs(order), 1)
 
     if order > 0  # derivative
         temp = k ./ (augbreaks[k+1:n+k-1] - augbreaks[1:n-1])
@@ -166,19 +166,19 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
     max_repeat = p.k-minorder + 1
-    T = eltype(p)
+    T = basis_eltype(p, x)
     bas = zeros(T, m, max_repeat)  # 73
     bas[:, 1] = one(T)  # 74
     B = Array{SparseMatrixCSC{T,Int}}(length(order))  # 75
 
     # 76
     if maximum(order) > 0
-        D = derivative_op(p, maximum(order))[1]
+        D = derivative_op(p, x, maximum(order))[1]
     end
 
     # 77
     if minorder < 0
-        I = derivative_op(p, minorder)[1]
+        I = derivative_op(p, x, minorder)[1]
     end
 
     # We know what the rows and columns will be, we just compute them once and
@@ -222,19 +222,19 @@ function evalbase(::Type{SplineSparse}, p::SplineParams, x,
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
     max_repeat = p.k-minorder + 1
-    T = eltype(p)
+    T = basis_eltype(p, x)
     bas = zeros(T, max_repeat, m)
     bas[1, :] = one(T)
     B = Array{SplineSparse{T,Int}}(length(order))  # 75
 
     if maximum(order) > 0
         error("not supported yet")
-        D = derivative_op(p, maximum(order))[1]
+        D = derivative_op(p, x, maximum(order))[1]
     end
 
     if minorder < 0
         error("not supported yet")
-        I = derivative_op(p, minorder)[1]
+        I = derivative_op(p, x, minorder)[1]
     end
 
     for j in 1:p.k-minorder  # 78

@@ -13,8 +13,8 @@ function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
     end
 
     if prod(n) != size(c, 1)  # 29-31
-        m = "b and c are not conformable (b suggests size(c, 1) should be $(prod(n)))"
-        error(m)
+        msg = "b and c are not conformable (b suggests size(c, 1) should be $(prod(n)))"
+        error(msg)
     end
 
     z = c'  # 32

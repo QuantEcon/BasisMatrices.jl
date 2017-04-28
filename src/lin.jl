@@ -41,7 +41,10 @@ LinParams(n::Int, a::Real, b::Real) =
 family{T<:LinParams}(::Type{T}) = Lin
 family_name{T<:LinParams}(::Type{T}) = "Lin"
 Base.issparse{T<:LinParams}(::Type{T}) = true
-@generated Base.eltype{T<:LinParams}(::Type{T}) = eltype(T.parameters[1])
+function Base.eltype{T}(::Type{LinParams{T}})
+    elT = eltype(T)
+    elT <: Integer ? Float64 : elT
+end
 
 # methods that only make sense for instances
 Base.min(p::LinParams) = minimum(p.breaks)
@@ -56,12 +59,13 @@ end
 
 nodes(p::LinParams) = p.breaks
 
-function derivative_op(p::LinParams, order::Int=1)
+function derivative_op(p::LinParams, x, order::Int=1)
     breaks, evennum = p.breaks, p.evennum
 
-    newbreaks = breaks
+    newbreaks = collect(breaks)
+    Tb = typeof(newbreaks)
     n = length(breaks)
-    D = Array{SparseMatrixCSC{Float64,Int}}(abs(order))
+    D = Array{SparseMatrixCSC{basis_eltype(p, x),Int}}(abs(order))
 
     for i in 1:order
         d = 1./diff(newbreaks)
@@ -71,14 +75,14 @@ function derivative_op(p::LinParams, order::Int=1)
         else
             D[1] = d
         end
-        newbreaks = (newbreaks[1:end-1]+newbreaks[2:end])/2
+        newbreaks = ((newbreaks[1:end-1]+newbreaks[2:end])/2)::Tb
         n = n-1
     end
 
     for i in -1:-1:order
-        newbreaks=[dot([3, -1], newbreaks[1:2]);
-                   (newbreaks[1:end-1]+newbreaks[2:end]);
-                   dot([-1, 3], newbreaks[end-1:end])]/2
+        newbreaks = ([dot([3, -1], newbreaks[1:2]);
+                      (newbreaks[1:end-1]+newbreaks[2:end]);
+                       dot([-1, 3], newbreaks[end-1:end])]/2)::Tb
         d = diff(newbreaks)'
         n = n+1
         d = tril(repmat(d, n, 1), -1)
@@ -135,18 +139,19 @@ function evalbase(::Type{SparseMatrixCSC}, p::LinParams,
                   x::Union{Real,AbstractArray}=nodes(p), order::Int=0)
     # 46-49
     if order != 0
-        D, params = derivative_op(p, order)
-        B = evalbase(params, x, 0) * D[end]
-        return B
+        D, params = derivative_op(p, x, order)
+        B = evalbase(SparseMatrixCSC, params, x, 0)
+        return B*D[end]
     end
 
     m, n, ind = _prep_evalbase(p, x)
-    z = similar(x)
+    z = Array{basis_eltype(p, x)}(length(x))
     for i in 1:length(x)
         z[i] = (x[i]-p.breaks[ind[i]])/(p.breaks[ind[i]+1]-p.breaks[ind[i]])
     end
 
-    return sparse(vcat(1:m, 1:m), vcat(ind, ind+1), vcat(1-z, z), m, n)
+    out = sparse(vcat(1:m, 1:m), vcat(ind, ind+1), vcat(1-z, z), m, n)
+    return out
 end
 
 function evalbase(::Type{SplineSparse}, p::LinParams,
@@ -158,21 +163,22 @@ function evalbase(::Type{SplineSparse}, p::LinParams,
 
     m, n, ind = _prep_evalbase(p, x)
 
-    z = Array{eltype(x)}(2*length(x))
+    T = basis_eltype(p, x)
+    z = Array{T}(2*length(x))
     for i in 1:length(x)
         ix = 2i
         z[ix] = (x[i]-p.breaks[ind[i]])/(p.breaks[ind[i]+1]-p.breaks[ind[i]])
         z[ix-1] = 1 - z[ix]
     end
 
-    return SplineSparse{eltype(x),Int,1,2}(n, z, ind)
+    return SplineSparse{T,Int,1,2}(n, z, ind)
 end
 
 evalbase(p::LinParams, x::Union{Real,AbstractArray}=nodes(p), order::Int=0) =
     evalbase(SparseMatrixCSC, p, x, order)
 
 function evalbase(p::LinParams, x, order::AbstractArray{Int})
-    out = Array{SparseMatrixCSC{Float64,Int}}(size(order))
+    out = Array{SparseMatrixCSC{basis_eltype(p,x),Int}}(size(order))
 
     for I in eachindex(order)
         out[I] = evalbase(p, x, order[I])

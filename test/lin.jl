@@ -40,4 +40,12 @@
 
     @test_throws ErrorException evalbase(SplineSparse, bas1.params[1], rand(4), 1)
 
+
+    @testset "non Float64 eltypes" begin
+        p = LinParams(Float32[0.1, 0.2, 0.3, 0.4, 0.5])
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35]))
+        @test Float32 == eltype(@inferred BasisMatrices.evalbase(p, Float32[0.25, 0.35], 1))
+        @test Float64 == eltype(@inferred BasisMatrices.evalbase(p, [0.25, 0.35]))
+    end
+
 end

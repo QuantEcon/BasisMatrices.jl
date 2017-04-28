@@ -70,6 +70,15 @@ include("smolyak.jl")
 
 # now some more interface methods that only make sense once we have defined
 # the subtypes
+basis_eltype{TP<:BasisParams}(::TP, x) = promote_type(eltype(TP), eltype(x))
+basis_eltype{TP<:BasisParams}(::Type{TP}, x) = promote_type(eltype(TP), eltype(x))
+"""
+    basis_eltype(p::Union{BasisParams,Type{<:BasisParams}, x)
+
+Return the eltype of the Basis matrix that would be obtained by calling
+`evalbase(p, x)`
+"""
+basis_eltype
 
 # give the type of the `vals` field based on the family type parameter of the
 # corresponding basis. `Spline` and `Lin` use sparse, `Cheb` uses dense

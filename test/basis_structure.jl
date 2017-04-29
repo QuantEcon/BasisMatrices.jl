@@ -206,4 +206,20 @@
         @test eltype(bs3.vals) == SplineSparse{Float32,Int}
     end
 
+    @testset "no ABSR" begin
+        bmd = BasisMatrix(mb, X)
+        bmt = BasisMatrix(mb, x123)
+        @test isa(bmd, BasisMatrix{Direct})
+        @test isa(bmt, BasisMatrix{Tensor})
+
+        bmd2 = BasisMatrix(SplineSparse, mb, X)
+        bmt2 = BasisMatrix(SplineSparse, mb, x123)
+        @test isa(bmd2.vals[1], SplineSparse)
+        @test isa(bmd2.vals[2], Matrix)
+        @test isa(bmd2.vals[3], SplineSparse)
+        @test isa(bmt2.vals[1], SplineSparse)
+        @test isa(bmt2.vals[2], Matrix)
+        @test isa(bmt2.vals[3], SplineSparse)
+    end
+
 end  # testset

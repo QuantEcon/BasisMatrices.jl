@@ -1,5 +1,5 @@
 @testset "Testing logic using strings" begin
-    if VERSION < v"0.6-"
+    if VERSION < v"0.6.0-dev.1833" # added in Julia PR #19548
         Base.one{T<:AbstractString}(::Type{T}) = ""
     end
     z = ["x ", "y ", "z "]

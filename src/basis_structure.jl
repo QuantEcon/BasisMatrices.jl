@@ -286,20 +286,23 @@ end
 
 
 # method to allow passing types instead of instances of ABSR
-function BasisMatrix{BST<:ABSR,T2}(::Type{T2}, basis, ::Type{BST}, x, order=0)
+function BasisMatrix{BST<:ABSR,T2}(::Type{T2}, basis, ::Type{BST},
+                                   x::Union{AbstractArray,TensorX}, order=0)
     BasisMatrix(T2, basis, BST(), x, order)
 end
 
-function BasisMatrix{BST<:ABSR}(basis, ::Type{BST}, x, order=0)
+function BasisMatrix{BST<:ABSR}(basis, ::Type{BST},
+                                x::Union{AbstractArray,TensorX}, order=0)
     BasisMatrix(basis, BST(), x, order)
 end
 
 # method without vals eltypes
-function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::TBM, x, order=0)
+function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::TBM,
+                                x::Union{AbstractArray,TensorX}, order=0)
     BasisMatrix(Void, basis, tbm, x, order)
 end
 
-function BasisMatrix(basis::Basis, x, order=0)
+function BasisMatrix(basis::Basis, x::Union{AbstractArray,TensorX}, order=0)
     BasisMatrix(Void, basis, x, order)
 end
 

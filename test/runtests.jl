@@ -1,13 +1,7 @@
 module BasisMatricesTests
 
 using BasisMatrices
-
-if VERSION >= v"0.5-"
-    using Base.Test
-else
-    using BaseTestNext
-    const Test = BaseTestNext
-end
+using Base.Test
 
 tests = ["types.jl", "basis.jl", "util.jl", "spline.jl", "interp.jl",
          "cheb.jl", "lin.jl", "basis_structure.jl", "complete.jl",

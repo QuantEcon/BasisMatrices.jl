@@ -60,6 +60,7 @@ end
 function complete_polynomial_impl!{T,N}(out::Type{Vector{T}}, z::Type{Vector{T}},
                                         ::Type{Degree{N}})
     outer_temp = Expr(:(=), Symbol("tmp_$(N+1)"), one(T))
+    outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)
     quote
         nvar = length(z)
         if length(out) != (n_complete(nvar, $N))
@@ -71,9 +72,10 @@ function complete_polynomial_impl!{T,N}(out::Type{Vector{T}}, z::Type{Vector{T}}
 
         ix = 1
         $outer_temp
+        $outer_i
         @nloops($N, # number of loops
                 i,  # counter
-                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->(i_{d+1}:nvar),  # ranges
                 d->((begin
                         ix += 1
                         tmp_d = tmp_{d+1}*z[i_d]
@@ -98,6 +100,7 @@ end
 #
 function complete_polynomial_impl!{T,N}(out::Type{Matrix{T}}, z::Type{Matrix{T}},
                                         ::Type{Degree{N}})
+    outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)
     quote
         nobs, nvar = size(z)
         if size(out) != (nobs, n_complete(nvar, $N))
@@ -110,9 +113,10 @@ function complete_polynomial_impl!{T,N}(out::Type{Matrix{T}}, z::Type{Matrix{T}}
         end
 
         ix = 1
+        $outer_i
         @nloops($N, # number of loops
                 i,  # counter
-                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->(i_{d+1}:nvar),  # ranges
                 d->((begin
                         ix += 1
                         @inbounds @simd for r=1:nobs
@@ -156,6 +160,7 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Vector{T}}, z::Type{Vector{T
                                           ::Type{Degree{N}}, ::Type{Derivative{D}})
     notD_top = Expr(:(=), Symbol("notD_$(N+1)"), one(T))
     coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
+    outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)
     quote
         nvar = length(z)
         if length(out) != (n_complete(nvar, $N))
@@ -168,9 +173,10 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Vector{T}}, z::Type{Vector{T
         ix = 1
         $notD_top
         $coeff_top
+        $outer_i
         @nloops($N, # number of loops
                 i,  # counter
-                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->(i_{d+1}:nvar),  # ranges
                 d->((begin
                         ix += 1
                         # Depending on what i_d is, update variables
@@ -182,7 +188,7 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Vector{T}}, z::Type{Vector{T
                             notD_d = notD_{d+1}*z[i_d]
                         end
 
-                        out[ix] = coeff_d * z[D]^(coeff_d-1) * notD_d
+                        out[ix] = coeff_d == 0 ? zero(T) : coeff_d * z[D]^(coeff_d-1) * notD_d
                     end)),  # preexpr
                 Expr(:block, :nothing)  # bodyexpr
                 )
@@ -204,6 +210,7 @@ end
 function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{Matrix{T}},
                                           ::Type{Degree{N}}, ::Type{Derivative{D}})
     coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
+    outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)
     quote
         nobs, nvar = size(z)
         if size(out) != (nobs, n_complete(nvar, $N))
@@ -217,9 +224,10 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{Matrix{T
 
         ix = 1
         $coeff_top
+        $outer_i
         @nloops($N, # number of loops
                 i,  # counter
-                d->((d == $N ? 1 : i_{d+1}) : nvar),  # ranges
+                d->(i_{d+1}:nvar),  # ranges
                 d->((begin
                         ix += 1
 
@@ -229,7 +237,7 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{Matrix{T
                         @inbounds @simd for r=1:nobs
                             tmp = one($T)
                             @nexprs $N-d+1 j->(tmp *= ifelse(i_{$N-j+1} != D, z[r, i_{$N-j+1}], one($T)))
-                            out[r, ix] = coeff_d * tmp * z[r, D]^(coeff_d-1)
+                            out[r, ix] = coeff_d == 0 ? zero(T) : coeff_d * tmp * z[r, D]^(coeff_d-1)
                         end
                     end)),  # preexpr
                 Expr(:block, :nothing)  # bodyexpr

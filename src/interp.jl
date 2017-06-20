@@ -104,7 +104,7 @@ function _funeval(c, bs::BasisMatrix{Direct}, order::AbstractMatrix{Int})  # fun
 
     f = Array{eltype(c),3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
-    for i=1:kk
+    for i in 1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
     end
     f
@@ -181,7 +181,7 @@ end
 
 function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
     # check inputs
-    size(x, 2) == N || error("x must have d=$(N) columns")
+    @boundscheck size(x, 2) == N || error("x must have d=$(N) columns")
 
     if order != 0
         msg = string("passing order as integer only allowed for $(order=0).",
@@ -191,16 +191,19 @@ function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
 
     _order = fill(0, 1, N)
     bs = BasisMatrix(SplineSparse, basis, Direct(), x, _order)  # 67
-    funeval(c, bs, _order)
+    _out = funeval(c, bs, _order)
+
+    # we only had one order, so we want to collapse the third dimension of _out
+    return _out[:, :, 1]
 end
 
 function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, _order::AbstractMatrix)
     # check that inputs are conformable
-    size(x, 2) == N || error("x must have d=$(N) columns")  # 62
+    @boundscheck size(x, 2) == N || error("x must have d=$(N) columns")  # 62
     order = _check_order(N, _order)
 
     # construct BasisMatrix in Direct for
-    bs = BasisMatrix(SparseMatrixCSC, basis, Direct(), x, order)  # 67
+    bs = BasisMatrix(SplineSparse, basis, Direct(), x, order)  # 67
 
     # pass of to specialized method below
     funeval(c, bs, order)
@@ -267,7 +270,7 @@ Interpoland(p::BasisParams, f::Function) = Interpoland(Basis(p), f)
 (itp::Interpoland)(x, order=0) = funeval(itp.coefs, itp.basis, x, order)
 
 # now, given a new vector of `y` data we construct a new coefficient vector
-function update_coefs!(interp::Interpoland, y::Vector)
+function update_coefs!(interp::Interpoland, y::AbstractArray)
     # leverage the BasisMatrix we kept around
     c = funfitxy(interp.basis, interp.bmat, y)[1]
     copy!(interp.coefs, c)  # update c inplace b/c Interpoland is immutable
@@ -278,7 +281,7 @@ update_coefs!(interp::Interpoland, f::Function) =
     update_coefs!(interp, f(nodes(interp.basis)[1]))
 
 # alias update_coefs! to fit!
-fit!(interp::Interpoland, y::Vector) = update_coefs!(interp, y)
+fit!(interp::Interpoland, y::AbstractArray) = update_coefs!(interp, y)
 fit!(interp::Interpoland, f::Function) = update_coefs!(interp, f)
 
 Base.show{T,N,BST<:ABSR}(io::IO, ::Interpoland{T,N,BST}) =

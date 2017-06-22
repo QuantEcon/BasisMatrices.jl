@@ -26,7 +26,7 @@
     	coeffs = funfitf(bas2, exp)
     	points = rand(10000)
 
-    	d1 = funeval(coeffs, bas2, points, reshape([1], 1, 1))
+    	d1 = evalbase(SparseMatrixCSC, bas2.params[1], points, 1) * coeffs
         @test ≈(d1, exp.(points), atol=1e-7)
 
     end

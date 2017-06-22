@@ -228,7 +228,6 @@ function evalbase(::Type{SplineSparse}, p::SplineParams, x,
     B = Array{SplineSparse{T,Int}}(length(order))  # 75
 
     if maximum(order) > 0
-        error("not supported yet")
         D = derivative_op(p, x, maximum(order))[1]
     end
 
@@ -253,7 +252,49 @@ function evalbase(::Type{SplineSparse}, p::SplineParams, x,
         if ii > 0
             ord = order[ii]
             cols = (ord - p.k) + ind
-            B[ii] = SplineSparse{T,Int,1,p.k-ord+1}(n-ord, vec(bas), cols)
+            if ord > 0
+                D_ord = D[ord]
+                new_vals = zeros(T, m * (p.k+1))
+                ix = 0
+                for row in 1:m  # row, col are rows/columns of the output
+                    start_bas_col = cols[row]
+                    end_bas_col = start_bas_col + p.k - ord
+                    for col in 1:n
+                        colptr_start = D_ord.colptr[col]
+                        colptr_end = D_ord.colptr[col+1] - 1
+                        start_D_row = D_ord.rowval[colptr_start]
+                        end_D_row = D_ord.rowval[colptr_end]
+
+                        # stop end_D_row is smaller than start_bas_col
+                        end_D_row < start_bas_col && continue
+
+                        # also stop if end_bas_col is smaller than start_D_row
+                        end_bas_col < start_D_row && continue
+
+                        # otherwise, we have some overlap
+                        ix += 1
+
+                        for D_ptr in colptr_start:colptr_end
+                            D_row = D_ord.rowval[D_ptr]
+                            if D_row < start_bas_col  # haven't made it to overlap
+                                continue
+                            elseif D_row > end_bas_col  # gone past overlap
+                                break
+                            else  # in the overlap
+                                bas_ix = D_row - start_bas_col + 1
+                                new_vals[ix] += D_ord.nzval[D_ptr] * bas[bas_ix, row]
+                            end
+                        end
+                    end
+                end
+
+                B[ii] = SplineSparse{T,Int,1,p.k+1}(n, new_vals, cols)
+            elseif ord == 0
+
+                B[ii] = SplineSparse{T,Int,1,p.k+1}(n-ord, vec(bas), cols)
+            else
+                error("Shouldn't be here. Please file an issue")
+            end
         end
     end
     return B

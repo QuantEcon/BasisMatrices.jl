@@ -60,11 +60,13 @@ holder = (
         @test maximum(abs, mpe -  y) <=  1e-12
 
         # order != 0. Note for Spline err is 7e-5. For Cheb 9e-14 and Lin 2e-1
-        der1 = @inferred funeval(c_direct, basis, X, [0 1])
-        @test maximum(abs, der1 - yprime2) <= 2e-1
-        der2 = @inferred funeval(c_direct, basis, x12, [0 1])
-        @test maximum(abs, der1 - yprime2) <= 2e-1
-        @test maximum(abs, der1 - der2) <= 1e-12
+        if case != "Lin"
+            der1 = @inferred funeval(c_direct, basis, X, [0 1])
+            @test maximum(abs, der1 - yprime2) <= 2e-1
+            der2 = @inferred funeval(c_direct, basis, x12, [0 1])
+            @test maximum(abs, der1 - yprime2) <= 2e-1
+            @test maximum(abs, der1 - der2) <= 1e-12
+        end
 
     end
 

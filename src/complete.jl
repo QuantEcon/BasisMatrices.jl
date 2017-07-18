@@ -38,6 +38,8 @@ function n_complete(n::Int, D::Int)
     out
 end
 
+n_complete{D}(n::Int, ::Union{Degree{D},Type{Degree{D}}}) = n_complete(n, D)
+
 #
 # Generating basis functions
 #
@@ -87,12 +89,15 @@ function complete_polynomial_impl!{T,N}(out::Type{Vector{T}}, z::Type{Vector{T}}
     end
 end
 
-function complete_polynomial{T}(z::Vector{T}, d::Int)
+function complete_polynomial{T,N}(z::AbstractVector{T}, d::Degree{N})
     nvar = length(z)
     out = Array{T}(n_complete(nvar, d))
-    complete_polynomial!(out, z, Degree{d}())
+    complete_polynomial!(out, z, d)
+    out
+end
 
-    return out
+function complete_polynomial(z::AbstractVector, d::Int)
+    complete_polynomial(z, Degree{d}())
 end
 
 #
@@ -131,12 +136,16 @@ function complete_polynomial_impl!{T,N}(out::Type{Matrix{T}}, z::Type{Matrix{T}}
     end
 end
 
-function complete_polynomial{T}(z::Matrix{T}, d::Int)
+
+function complete_polynomial{T,N}(z::AbstractMatrix{T}, d::Degree{N})
     nobs, nvar = size(z)
     out = Array{T}(nobs, n_complete(nvar, d))
-    complete_polynomial!(out, z, Degree{d}())
+    complete_polynomial!(out, z, d)
+    out
+end
 
-    return out
+function complete_polynomial(z::AbstractMatrix, d::Int)
+    complete_polynomial(z, Degree{d}())
 end
 
 #
@@ -196,12 +205,16 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Vector{T}}, z::Type{Vector{T
     end
 end
 
-function complete_polynomial{T}(z::Vector{T}, d::Int, der::Int)
+function complete_polynomial{N,D,T}(
+        z::AbstractVector{T}, d::Degree{N}, der::Derivative{D}
+    )
     nvar = length(z)
     out = Array{T}(n_complete(nvar, d))
-    complete_polynomial!(out, z, Degree{d}(), Derivative{der}())
+    complete_polynomial!(out, z, d, der)
+end
 
-    return out
+function complete_polynomial(z::AbstractVector, d::Int, der::Int)
+    complete_polynomial(z, Degree{d}(), Derivative{der}())
 end
 
 #
@@ -246,10 +259,14 @@ function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{Matrix{T
     end
 end
 
-function complete_polynomial{T}(z::Matrix{T}, d::Int, der::Int)
+function complete_polynomial{N,D,T}(
+        z::AbstractMatrix{T}, d::Degree{N}, der::Derivative{D}
+    )
     nobs, nvar = size(z)
     out = Array{T}(nobs, n_complete(nvar, d))
-    complete_polynomial!(out, z, Degree{d}(), Derivative{der}())
+    complete_polynomial!(out, z, d, der)
+end
 
-    return out
+function complete_polynomial(z::AbstractMatrix, d::Int, der::Int)
+    complete_polynomial(z, Degree{d}(), Derivative{der}())
 end

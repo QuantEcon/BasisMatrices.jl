@@ -53,34 +53,40 @@ end
     z2 = z[1, :]
     all_zero = zeros(10)
     all_ones = ones(10)
-    out_2 = complete_polynomial(z, 2)
-    # need to test columns size(z, 2) + 2:end
-    @test all(isapprox.(out_2[:, 1], all_ones))
-    @test all(isapprox.(out_2[:, 2], z[:, 1]))
-    @test all(isapprox.(out_2[:, 3], z[:, 1].*z[:, 1]))
-    @test all(isapprox.(out_2[:, 4], z[:, 1].*z[:, 2]))
-    @test all(isapprox.(out_2[:, 5], z[:, 1].*z[:, 3]))
-    @test all(isapprox.(out_2[:, 6], z[:, 2]))
-    @test all(isapprox.(out_2[:, 7], z[:, 2].*z[:, 2]))
-    @test all(isapprox.(out_2[:, 8], z[:, 2].*z[:, 3]))
-    @test all(isapprox.(out_2[:, 9], z[:, 3]))
-    @test all(isapprox.(out_2[:, 10], z[:, 3].*z[:, 3]))
-    # Test vector methods to make sure generates same thing as matrix methods
-    @test all(isapprox.(out_2[1, :], complete_polynomial(z2, 2)))
+    out_21 = complete_polynomial(z, 2)
+    out_22 = complete_polynomial(z, BasisMatrices.Degree{2}())
+    for out_2 in (out_21, out_22)
+        # need to test columns size(z, 2) + 2:end
+        @test all(isapprox.(out_2[:, 1], all_ones))
+        @test all(isapprox.(out_2[:, 2], z[:, 1]))
+        @test all(isapprox.(out_2[:, 3], z[:, 1].*z[:, 1]))
+        @test all(isapprox.(out_2[:, 4], z[:, 1].*z[:, 2]))
+        @test all(isapprox.(out_2[:, 5], z[:, 1].*z[:, 3]))
+        @test all(isapprox.(out_2[:, 6], z[:, 2]))
+        @test all(isapprox.(out_2[:, 7], z[:, 2].*z[:, 2]))
+        @test all(isapprox.(out_2[:, 8], z[:, 2].*z[:, 3]))
+        @test all(isapprox.(out_2[:, 9], z[:, 3]))
+        @test all(isapprox.(out_2[:, 10], z[:, 3].*z[:, 3]))
+        # Test vector methods to make sure generates same thing as matrix methods
+        @test all(isapprox.(out_2[1, :], complete_polynomial(z2, 2)))
+    end
 
-    out_der_2 = complete_polynomial(z, 2, 2)
-    # need to test columns size(z, 2) + 2:end
-    @test all(isapprox.(out_der_2[:, 1], all_zero))
-    @test all(isapprox.(out_der_2[:, 2], all_zero))
-    @test all(isapprox.(out_der_2[:, 3], all_zero))
-    @test all(isapprox.(out_der_2[:, 4], z[:, 1]))
-    @test all(isapprox.(out_der_2[:, 5], all_zero))
-    @test all(isapprox.(out_der_2[:, 6], all_ones))
-    @test all(isapprox.(out_der_2[:, 7], 2 .* z[:, 2]))
-    @test all(isapprox.(out_der_2[:, 8], z[:, 3]))
-    @test all(isapprox.(out_der_2[:, 9], all_zero))
-    @test all(isapprox.(out_der_2[:, 10], all_zero))
-    # Test vector methods to make sure generates same thing as matrix methods
-    @test all(isapprox.(out_2[1, :], complete_polynomial(z2, 2)))
+    out_der_21 = complete_polynomial(z, 2, 2)
+    out_der_22 = complete_polynomial(
+        z, BasisMatrices.Degree{2}(), BasisMatrices.Derivative{2}()
+    )
+    for out_der_2 in (out_der_21, out_der_22)
+        # need to test columns size(z, 2) + 2:end
+        @test all(isapprox.(out_der_2[:, 1], all_zero))
+        @test all(isapprox.(out_der_2[:, 2], all_zero))
+        @test all(isapprox.(out_der_2[:, 3], all_zero))
+        @test all(isapprox.(out_der_2[:, 4], z[:, 1]))
+        @test all(isapprox.(out_der_2[:, 5], all_zero))
+        @test all(isapprox.(out_der_2[:, 6], all_ones))
+        @test all(isapprox.(out_der_2[:, 7], 2 .* z[:, 2]))
+        @test all(isapprox.(out_der_2[:, 8], z[:, 3]))
+        @test all(isapprox.(out_der_2[:, 9], all_zero))
+        @test all(isapprox.(out_der_2[:, 10], all_zero))
+    end
 
 end

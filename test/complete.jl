@@ -87,8 +87,6 @@ end
         @test all(isapprox.(out_der_2[:, 8], z[:, 3]))
         @test all(isapprox.(out_der_2[:, 9], all_zero))
         @test all(isapprox.(out_der_2[:, 10], all_zero))
-        # Test vector methods to make sure generates same thing as matrix methods
-        @test all(isapprox.(out_2[1, :], complete_polynomial(z2, 2)))
     end
 
 end

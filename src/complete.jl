@@ -44,11 +44,11 @@ n_complete{D}(n::Int, ::Union{Degree{D},Type{Degree{D}}}) = n_complete(n, D)
 # Generating basis functions
 #
 @generated function complete_polynomial!{N,T,Ndim}(out::Array{T, Ndim},
-                                                   z::Array{T,Ndim}, d::Degree{N})
+                                                   z::AbstractArray{T,Ndim}, d::Degree{N})
     complete_polynomial_impl!(out, z, d)
 end
 
-function complete_polynomial!{T, Ndim}(out::Array{T,Ndim}, z::Array{T,Ndim},
+function complete_polynomial!{T, Ndim}(out::Array{T,Ndim}, z::AbstractArray{T,Ndim},
                                        d::Int)
     complete_polynomial!(out, z, Degree{d}())
 
@@ -103,7 +103,7 @@ end
 #
 # Matrix versions for generating basis functions
 #
-function complete_polynomial_impl!{T,N}(out::Type{Matrix{T}}, z::Type{Matrix{T}},
+function complete_polynomial_impl!{T,N}(out::Type{Matrix{T}}, z::Type{<:AbstractMatrix{T}},
                                         ::Type{Degree{N}})
     outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)
     quote
@@ -151,12 +151,12 @@ end
 #
 # Generating 1st derivative of basis functions
 #
-@generated function complete_polynomial!{N,D,T,Ndim}(out::Array{T, Ndim}, z::Array{T,Ndim},
+@generated function complete_polynomial!{N,D,T,Ndim}(out::Array{T, Ndim}, z::AbstractArray{T,Ndim},
                                                      d::Degree{N}, der::Derivative{D})
     complete_polynomial_impl!(out, z, d, der)
 end
 
-function complete_polynomial!{T, Ndim}(out::Array{T,Ndim}, z::Array{T,Ndim}, d::Int, der::Int)
+function complete_polynomial!{T, Ndim}(out::Array{T,Ndim}, z::AbstractArray{T,Ndim}, d::Int, der::Int)
     complete_polynomial!(out, z, Degree{d}(), Derivative{der}())::Array{T,Ndim}
 
     return out
@@ -220,7 +220,7 @@ end
 #
 # Matrix versions for generating first derivative of basis functions
 #
-function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{Matrix{T}},
+function complete_polynomial_impl!{T,N,D}(out::Type{Matrix{T}}, z::Type{<:AbstractMatrix{T}},
                                           ::Type{Degree{N}}, ::Type{Derivative{D}})
     coeff_top = Expr(:(=), Symbol("coeff_$(N+1)"), zero(T))
     outer_i = Expr(:(=), Symbol("i_$(N+1)"), 1)

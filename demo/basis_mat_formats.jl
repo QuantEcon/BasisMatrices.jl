@@ -72,7 +72,7 @@ c6 = funfitxy(basis, bme, f)[1]
 
 Compare/contrast formats:
 
-- Expanded is the most efficient in terms of memory, but you are limited to
+- Tensor is the most efficient in terms of memory, but you are limited to
 evaluation at a full cartesian product of the individual vectors you pass in
 - Direct is the middle in terms of efficiency, but doesn't suffer from the
 flexibility issue we saw with Expanded: you can evaluate at arbitrary points in

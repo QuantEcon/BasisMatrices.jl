@@ -78,7 +78,7 @@ evaluation at a full cartesian product of the individual vectors you pass in
 flexibility issue we saw with Expanded: you can evaluate at arbitrary points in
 the 2d space simply by passing in the points as rows to the matrix S. However,
 if we do want the cartesian product of 1d vectors, we are better off using
-Expanded because the Direct form will repeat calculations for the expanded grid
+Tensor because the Direct form will repeat calculations for the expanded grid
 points (to see it, look at how the second column of S repeats the first
 gridpoint of y a total of length(x) times. When you build the Direct form, we
 don't assume any structure about the rows of S, so we will repeat the

@@ -76,25 +76,25 @@ The first two groups of type are helper types used to facilitate construction of
 First is the `BasisFamily`:
 
 ```julia
-abstract BasisFamily
-immutable Cheb <: BasisFamily end
-immutable Lin <: BasisFamily end
-immutable Spline <: BasisFamily end
+abstract type BasisFamily end
+struct Cheb <: BasisFamily end
+struct Lin <: BasisFamily end
+struct Spline <: BasisFamily end
 
-abstract BasisParams
-type ChebParams <: BasisParams
+abstract type BasisParams end
+mutable struct ChebParams <: BasisParams
     n::Int
     a::Float64
     b::Float64
 end
 
-type SplineParams <: BasisParams
+mutable struct SplineParams <: BasisParams
     breaks::Vector{Float64}
     evennum::Int
     k::Int
 end
 
-type LinParams <: BasisParams
+mutable struct LinParams <: BasisParams
     breaks::Vector{Float64}
     evennum::Int
 end
@@ -107,16 +107,14 @@ end
 Then we have the central `Basis` type:
 
 ```julia
-type Basis{N}
-    basistype::Vector{BasisFamily}  # Basis family
-    n::Vector{Int}                  # number of points and/or basis functions
-    a::Vector{Float64}              # lower bound of domain
-    b::Vector{Float64}              # upper bound of domain
-    params::Vector{BasisParams}     # params to construct basis
+mutable struct Basis{N,TP<:Tuple}
+    params::TP     # params to construct basis
 end
 ```
 
-Each field in this object is a vector. The `i`th element of each vector is the value that specifies the commented description for the `i`th dimension.
+The `params` field of this type contains an `N` element tuple, where each
+element is a subtype of `BasisParams`. This represents an `N` dimensional
+basis.
 
 The `Basis` has support for the following methods:
 
@@ -128,26 +126,27 @@ The `Basis` has support for the following methods:
 - `size(b::Basis)`: `b.n` as a tuple instead of a vector (similar to `size(a::Array)`)
 - `==`: test two basis for equality
 - `nodes(b::Basis)->(Matrix, Vector{Vector{Float64}})`: the interpolation nodes. the first element is the tensor product of all dimensions, second element is a vector of vectors, where the `i`th element contains the nodes along dimension `i`.
+- `min` and `max` gives an `N` element tuple of the lower and upper bounds of the domain in each dimension.
 
 #### `BasisMatrix` representation
 
 Next we turn to representing the `BasisMatrix`, which is responsible for keeping track of the basis functions evaluated at the interpolation nodes. To keep track of this representation, we have another family of helper types:
 
 ```julia
-abstract AbstractBasisMatrixRep
-typealias ABSR AbstractBasisMatrixRep
+abstract type AbstractBasisMatrixRep end
+const ABSR = AbstractBasisMatrixRep
 
-immutable Tensor <: ABSR end
-immutable Direct <: ABSR end
-immutable Expanded <: ABSR end
+struct Tensor <: ABSR end
+struct Direct <: ABSR end
+struct Expanded <: ABSR end
 ```
 
 `AbstractBasisMatrixRep` is an abstract types, whose subtypes are singletons that specify how the basis matrices are stored. To understand how they are different, we need to see the structure of the `BasisMatrix` type:
 
 ```julia
-type BasisMatrix{BST<:ABSR}
+mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
     order::Matrix{Int}
-    vals::Array{AbstractMatrix}
+    vals::Matrix{TM}
 end
 ```
 
@@ -160,16 +159,20 @@ The content inside `vals` will vary based on the type Parameter `BST<:AbstractBa
 2. For `BST==Direct` `vals` will expand along the first dimension (rows) of the array so that for each `i`, the `[d, i]` element will have `length(basis)` rows and `basis.n[i]` (modulo loss or addition of basis functions from derivative/intergral operators.)
 3. For `BST==Expanded` `vals` will be expanded along both the rows and the columns and will contain a single `Matrix` for each desired derivative order. This format is the least memory efficient, but simplest conceptually for thinking about how to compute a coefficient vector (if `y` is `f(x)` then `coefs[d] = b.vals[d] \ y`)
 
+See the file
+[demo/basis_mat_formats.jl](https://github.com/QuantEcon/BasisMatrices.jl/blob/master/demo/basis_mat_formats.jl)
+for a more detailed description of the basis matrix formats.
+
 #### Convenience `Interpoland` type
 
 Finally the convenient `Interpoland` type:
 
 ```julia
-type Interpoland{T<:FloatingPoint,N,BST<:ABSR}
-    basis::Basis{N}
-    coefs::Vector{T}
-    bstruct::BasisMatrix{BST}
+mutable struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+    basis::TB  # the basis -- can't change
+    coefs::TC  # coefficients -- might change
+    bmat::TBM  # BasisMatrix at nodes of `b` -- can't change
 end
 ```
 
-This type doesn't do a whole lot. It's main purpose is to keep track of the coefficient vector and the `Basis` so the user doesn't have to carry both of them around. It also holds a `BasisMatrix` for the evaluation of the basis matrices at the interpolation nodes. This means that if the coefficient vector needs to be updated, this `BasisMatrix` will not be re-computed.
+The main purpose of this type is to keep track of the coefficient vector and the `Basis` so the user doesn't have to carry both of them around. It also holds a `BasisMatrix` for the evaluation of the basis matrices at the interpolation nodes. This means that if the coefficient vector needs to be updated, this `BasisMatrix` will not be re-computed.

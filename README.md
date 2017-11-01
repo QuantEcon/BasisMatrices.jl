@@ -14,7 +14,7 @@ The portions of this package that are based on their code have been licensed wit
 
 ### Matlab-esque interface
 
-For an API similar to the original [CompEcon Matlab package](http://www4.ncsu.edu/~pfackler/compecon/toolbox.html) by Miranda and Faclker, please see the [CompEcon.jl](https://github.com/QuantEcon/CompEcon.jl) package.
+For an API similar to the original [CompEcon Matlab package](http://www4.ncsu.edu/~pfackler/compecon/toolbox.html) by Miranda and Fackler, please see the [CompEcon.jl](https://github.com/QuantEcon/CompEcon.jl) package.
 
 ## Example
 
@@ -155,8 +155,8 @@ The `order` field keeps track of what order of derivative or integral the arrays
 
 The content inside `vals` will vary based on the type Parameter `BST<:AbstractBasisMatrixRep`:
 
-1. for `BST==Tensor` `vals` will store the evaluation of the basis functions at each of the integration nodes indpendently. Thus, the `[d, i]` element will be the derivative order `d` Basis at the interpolation nodes along the `i`th dimension (each column is a basis function, each row is an interpolation node). This is the most compact and memory efficient representation
-2. For `BST==Direct` `vals` will expand along the first dimension (rows) of the array so that for each `i`, the `[d, i]` element will have `length(basis)` rows and `basis.n[i]` (modulo loss or addition of basis functions from derivative/intergral operators.)
+1. for `BST==Tensor` `vals` will store the evaluation of the basis functions at each of the integration nodes independently. Thus, the `[d, i]` element will be the derivative order `d` Basis at the interpolation nodes along the `i`th dimension (each column is a basis function, each row is an interpolation node). This is the most compact and memory efficient representation
+2. For `BST==Direct` `vals` will expand along the first dimension (rows) of the array so that for each `i`, the `[d, i]` element will have `length(basis)` rows and `basis.n[i]` (modulo loss or addition of basis functions from derivative/integral operators.)
 3. For `BST==Expanded` `vals` will be expanded along both the rows and the columns and will contain a single `Matrix` for each desired derivative order. This format is the least memory efficient, but simplest conceptually for thinking about how to compute a coefficient vector (if `y` is `f(x)` then `coefs[d] = b.vals[d] \ y`)
 
 See the file

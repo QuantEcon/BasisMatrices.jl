@@ -68,6 +68,8 @@ include("spline.jl")
 include("complete.jl")
 include("smolyak.jl")
 
+evalbase(p::BasisParams, x::Number, args...) = evalbase(p, [x], args...)
+
 # now some more interface methods that only make sense once we have defined
 # the subtypes
 basis_eltype{TP<:BasisParams}(::TP, x) = promote_type(eltype(TP), eltype(x))

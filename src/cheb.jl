@@ -106,7 +106,7 @@ function derivative_op(p::ChebParams, x, order=1)
     D, ChebParams(n-order, a, b)
 end
 
-function evalbase(p::ChebParams, x=nodes(p, 1), order::Int=0, nodetype::Int=1)
+function evalbase(p::ChebParams, x::AbstractArray=nodes(p, 1), order::Int=0, nodetype::Int=1)
     n, a, b = p.n, p.a, p.b
     minorder = min(0, order)  # 30
 
@@ -129,7 +129,7 @@ function evalbase(p::ChebParams, x=nodes(p, 1), order::Int=0, nodetype::Int=1)
     return B
 end
 
-function evalbase(p::ChebParams, x, order::AbstractVector{Int}, nodetype::Int=1)
+function evalbase(p::ChebParams, x::AbstractArray, order::AbstractVector{Int}, nodetype::Int=1)
     n, a, b = p.n, p.a, p.b
     minorder = min(0, minimum(order))  # 30
     maxorder = maximum(order)
@@ -190,12 +190,12 @@ function evalbasex!{T<:Number}(out::AbstractMatrix, z::AbstractVector{T},
     out
 end
 
-function evalbasex!(out::AbstractMatrix, p::ChebParams, x)
+function evalbasex!(out::AbstractMatrix, p::ChebParams, x::AbstractArray)
     z = similar(x)
     evalbasex!(out, z, p, x)
 end
 
-function evalbasex(p::ChebParams, x)
+function evalbasex(p::ChebParams, x::AbstractArray)
     m = size(x, 1)
     n = p.n
     bas = Array{basis_eltype(p, x)}(m, n)

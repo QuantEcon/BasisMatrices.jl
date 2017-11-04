@@ -116,4 +116,11 @@
         show(iob, LinParams(10, -1, 1))
         show(iob, b_all)
     end
+
+    @testset "issue #36" begin
+        for p_func in (LinParams, SplineParams, ChebParams)
+            p = p_func(5, -1, 1)
+            @test evalbase(p, 0.4) == evalbase(p, [0.4])
+        end
+    end
 end

@@ -135,8 +135,10 @@ function _prep_evalbase(p::LinParams, x::AbstractArray)
     return m, n, ind
 end
 
-function evalbase(::Type{SparseMatrixCSC}, p::LinParams,
-                  x::Union{Real,AbstractArray}=nodes(p), order::Int=0)
+function evalbase(
+        ::Type{SparseMatrixCSC}, p::LinParams,
+        x::Union{Real,AbstractArray}=nodes(p), order::Int=0
+    )
     # 46-49
     if order != 0
         D, params = derivative_op(p, x, order)
@@ -154,8 +156,10 @@ function evalbase(::Type{SparseMatrixCSC}, p::LinParams,
     return out
 end
 
-function evalbase(::Type{SplineSparse}, p::LinParams,
-                  x::Union{Real,AbstractArray}=nodes(p), order::Int=0)
+function evalbase(
+        ::Type{SplineSparse}, p::LinParams,
+        x::Union{Real,AbstractArray}=nodes(p), order::Int=0
+    )
     # 46-49
     if order != 0
         error("derivatives un-supported right now")
@@ -174,8 +178,12 @@ function evalbase(::Type{SplineSparse}, p::LinParams,
     return SplineSparse{T,Int,1,2}(n, z, ind)
 end
 
-evalbase(p::LinParams, x::Union{Real,AbstractArray}=nodes(p), order::Int=0) =
+function evalbase(
+        p::LinParams, x::Union{Real,AbstractArray}=nodes(p),
+        order::Int=0
+    )
     evalbase(SparseMatrixCSC, p, x, order)
+end
 
 function evalbase(p::LinParams, x, order::AbstractArray{Int})
     out = Array{SparseMatrixCSC{basis_eltype(p,x),Int}}(size(order))

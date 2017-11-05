@@ -125,7 +125,11 @@ function nodes(sp::SmolyakParams)
     cube2dom!(dom_grid, dom_grid, sp)
 end
 
-function evalbase(sp::SmolyakParams, x, order=0)
+function evalbase(sp::SmolyakParams, x::AbstractVector, order=0)
+    evalbase(sp, reshape(x, 1, :), order)
+end
+
+function evalbase(sp::SmolyakParams, x::AbstractArray, order=0)
     cube_pts = dom2cube(x, sp)
     build_B(sp, cube_pts, sp.pinds)
 end

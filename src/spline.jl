@@ -89,7 +89,7 @@ function nodes(p::SplineParams)
 end
 
 # TODO: define method derivative_op(::Type{SplineSparse}, p::SplineParams, order::Int)
-function derivative_op(p::SplineParams, x, order=1)
+function derivative_op(p::SplineParams, x::AbstractArray, order=1)
     breaks, evennum, k = p.breaks, p.evennum, p.k
 
     any(order .> k) && error("Order of differentiation can't be greater than k")
@@ -116,7 +116,7 @@ function derivative_op(p::SplineParams, x, order=1)
     D, SplineParams(breaks, evennum, k-order)
 end
 
-function _chk_evalbase(p::SplineParams, x, order)
+function _chk_evalbase(p::SplineParams, x::AbstractArray, order)
     breaks, evennum, k = p.breaks, p.evennum, p.k
 
     # error handling
@@ -139,10 +139,16 @@ function _chk_evalbase(p::SplineParams, x, order)
     n, m, minorder, augbreaks, ind
 end
 
-evalbase(p::SplineParams, x=nodes(p), order::Int=0) = evalbase(p, x, [order])[1]
+function evalbase(p::SplineParams, x::AbstractArray=nodes(p), order::Int=0)
+    evalbase(p, x, [order])[1]
+end
 
-evalbase(::Type{SplineSparse}, p::SplineParams, x=nodes(p), order::Int=0) =
+function evalbase(
+        ::Type{SplineSparse}, p::SplineParams,
+        x::AbstractArray=nodes(p), order::Int=0
+    )
     evalbase(SplineSparse, p, x, [order])[1]
+end
 
 """
 Evaluate spline basis matrices for a certain order derivative at x
@@ -162,7 +168,7 @@ at each point in `x`. Each column represents a basis function.
 - `x`: Points at which the functions were evaluated
 
 """
-function evalbase(p::SplineParams, x, order::AbstractVector{Int})
+function evalbase(p::SplineParams, x::AbstractArray, order::AbstractVector{Int})
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
     max_repeat = p.k-minorder + 1
@@ -217,8 +223,10 @@ function evalbase(p::SplineParams, x, order::AbstractVector{Int})
     B
 end
 
-function evalbase(::Type{SplineSparse}, p::SplineParams, x,
-                  order::AbstractVector{Int})
+function evalbase(
+        ::Type{SplineSparse}, p::SplineParams, x::AbstractArray,
+        order::AbstractVector{Int}
+    )
     n, m, minorder, augbreaks, ind = _chk_evalbase(p, x, order)
 
     max_repeat = p.k-minorder + 1

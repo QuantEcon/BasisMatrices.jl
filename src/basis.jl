@@ -111,7 +111,7 @@ Base.size{N}(b::Basis{N}) = map(length, b.params)
 
 function nodes(b::Basis{1})
     x = nodes(b.params[1])
-    (x, [x])
+    (x, (x,))
 end
 
 function nodes(b::Basis)  # funnode method

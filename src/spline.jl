@@ -2,15 +2,15 @@
 # B-Spline Basis #
 # -------------- #
 
-immutable Spline <: BasisFamily end
+struct Spline <: BasisFamily end
 
-type SplineParams{T<:AbstractVector} <: BasisParams
+mutable struct SplineParams{T<:AbstractVector} <: BasisParams
     breaks::T
     evennum::Int
     k::Int
 
     # constructor to accept spline params arguments, do some pre-processing
-    function (::Type{SplineParams{T}}){T}(breaks::T, evennum::Int, k::Int)
+    function SplineParams{T}(breaks::T, evennum::Int, k::Int) where T
         # error handling
         k < 0 && error("spline order must be positive")
         length(breaks) < 2 && error("Must have at least two breakpoints")
@@ -32,7 +32,7 @@ type SplineParams{T<:AbstractVector} <: BasisParams
 
 end
 
-SplineParams{T<:AbstractVector}(breaks::T, evennum::Int, k::Int) =
+SplineParams(breaks::T, evennum::Int, k::Int) where {T<:AbstractVector} =
     SplineParams{T}(breaks, evennum, k)
 
 # constructor to take a, b, n and form linspace for breaks
@@ -42,10 +42,10 @@ SplineParams(n::Int, a::Real, b::Real, k::Int=3) =
 ## BasisParams interface
 # define these methods on the type, the instance version is defined over
 # BasisParams
-family{T<:SplineParams}(::Type{T}) = Spline
-family_name{T<:SplineParams}(::Type{T}) = "Spline"
-Base.issparse{T<:SplineParams}(::Type{T}) = true
-function Base.eltype{T}(::Type{SplineParams{T}})
+family(::Type{T}) where {T<:SplineParams} = Spline
+family_name(::Type{T}) where {T<:SplineParams} = "Spline"
+Base.issparse(::Type{T}) where {T<:SplineParams} = true
+function Base.eltype(::Type{SplineParams{T}}) where T
     elT = eltype(T)
     elT <: Integer ? Float64 : elT
 end

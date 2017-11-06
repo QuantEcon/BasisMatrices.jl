@@ -3,12 +3,12 @@
 # ---------------- #
 
 # Tensor representation, single function method; calls function that computes coefficients below below
-function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Vector{T})
+function get_coefs(basis::Basis, bs::BasisMatrix{Tensor}, y::Vector{T}) where T
     _get_coefs_deep(basis, bs, y)[:,1]
 end
 
 # Tensor representation, multiple function method; calls function that computes coefficients below
-function get_coefs{T}(basis::Basis, bs::BasisMatrix{Tensor}, y::Matrix{T})
+function get_coefs(basis::Basis, bs::BasisMatrix{Tensor}, y::Matrix{T}) where T
     _get_coefs_deep(basis, bs, y)
 end
 
@@ -137,22 +137,22 @@ funeval(c::AbstractVector, basis::Basis{1}, x::Real, order=0) =
     funeval(c, basis, fill(x, 1, 1), order)[1]
 
 # 1d basis + x::Vec + c::Mat => manypoints, many func ==> out 2d
-funeval{T<:Number}(c::AbstractMatrix, basis::Basis{1}, x::AbstractVector{T}, order=0) =
+funeval(c::AbstractMatrix, basis::Basis{1}, x::AbstractVector{T}, order=0) where {T<:Number} =
     funeval(c, basis, x[:, :], order)
 
 # 1d basis + x::Vec + c::Vec => manypoints, 1 func ==> out 1d
-funeval{T<:Number}(c::AbstractVector, basis::Basis{1}, x::AbstractVector{T}, order=0) =
+funeval(c::AbstractVector, basis::Basis{1}, x::AbstractVector{T}, order=0) where {T<:Number} =
     vec(funeval(c, basis, reshape(x, length(x), 1), order))
 
 # N(>1)d basis + x::Vec + c::Vec ==> 1 point, 1 func ==> out scalar
-funeval{N,T<:Number}(c::AbstractVector, basis::Basis{N}, x::AbstractVector{T}, order=0) =
+funeval(c::AbstractVector, basis::Basis{N}, x::AbstractVector{T}, order=0) where {N,T<:Number} =
     funeval(c, basis, reshape(x, 1, N), order)[1]
 
 # N(>1)d basis + x::Vec + c::Mat ==> 1 point, many func ==> out vec
-funeval{N,T<:Number}(c::AbstractMatrix, basis::Basis{N}, x::AbstractVector{T}, order=0) =
+funeval(c::AbstractMatrix, basis::Basis{N}, x::AbstractVector{T}, order=0) where {N,T<:Number} =
     vec(funeval(c, basis, reshape(x, 1, N), order))
 
-function funeval{N}(c, basis::Basis{N}, x::TensorX, order::Int=0)
+function funeval(c, basis::Basis{N}, x::TensorX, order::Int=0) where N
     # check inputs
     size(x, 1) == N ||  error("x must have d=$N elements")
 
@@ -167,7 +167,7 @@ function funeval{N}(c, basis::Basis{N}, x::TensorX, order::Int=0)
     funeval(c, bs, _order)
 end
 
-function funeval{N}(c, basis::Basis{N}, x::TensorX, _order::AbstractMatrix)
+function funeval(c, basis::Basis{N}, x::TensorX, _order::AbstractMatrix) where N
     # check inputs
     size(x, 1) == N ||  error("x must have d=$N elements")
     order = _check_order(N, _order)
@@ -179,7 +179,7 @@ function funeval{N}(c, basis::Basis{N}, x::TensorX, _order::AbstractMatrix)
     return funeval(c, bs, order)
 end
 
-function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
+function funeval(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0) where N
     # check inputs
     @boundscheck size(x, 2) == N || error("x must have d=$(N) columns")
 
@@ -197,7 +197,7 @@ function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, order::Int=0)
     return _out[:, :, 1]
 end
 
-function funeval{N}(c, basis::Basis{N}, x::AbstractMatrix, _order::AbstractMatrix)
+function funeval(c, basis::Basis{N}, x::AbstractMatrix, _order::AbstractMatrix) where N
     # check that inputs are conformable
     @boundscheck size(x, 2) == N || error("x must have d=$(N) columns")  # 62
     order = _check_order(N, _order)
@@ -232,7 +232,7 @@ end
 # Convenience `Interpoland` type #
 # ------------------------------ #
 
-type Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+mutable struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
     basis::TB  # the basis -- can't change
     coefs::TC  # coefficients -- might change
     bmat::TBM  # BasisMatrix at nodes of `b` -- can't change
@@ -284,5 +284,5 @@ update_coefs!(interp::Interpoland, f::Function) =
 fit!(interp::Interpoland, y::AbstractArray) = update_coefs!(interp, y)
 fit!(interp::Interpoland, f::Function) = update_coefs!(interp, f)
 
-Base.show{T,N,BST<:ABSR}(io::IO, ::Interpoland{T,N,BST}) =
+Base.show(io::IO, ::Interpoland{T,N,BST}) where {T,N,BST<:ABSR} =
     print(io, "$N dimensional interpoland")

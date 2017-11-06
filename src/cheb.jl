@@ -2,29 +2,29 @@
 # Chebyshev Basis #
 # --------------- #
 
-immutable Cheb <: BasisFamily end
+struct Cheb <: BasisFamily end
 
-type ChebParams{T<:Number} <: BasisParams
+mutable struct ChebParams{T<:Number} <: BasisParams
     n::Int
     a::T
     b::T
 
-    function (::Type{ChebParams{T}}){T}(n::Int, a::T, b::T)
+    function ChebParams{T}(n::Int, a::T, b::T) where T
         n <= 0 && error("n must be positive")
         a >= b && error("left endpoint (a) must be less than right end point (b)")
         new{T}(n, a, b)
     end
 end
 
-ChebParams{T<:Number}(n::Int, a::T, b::T) = ChebParams{T}(n, a, b)
-ChebParams{T<:Integer}(n::Int, a::T, b::T) = ChebParams(n, Float64(a), Float64(b))
+ChebParams(n::Int, a::T, b::T) where {T<:Number} = ChebParams{T}(n, a, b)
+ChebParams(n::Int, a::T, b::T) where {T<:Integer} = ChebParams(n, Float64(a), Float64(b))
 
 ## BasisParams interface
 # define these methods on the type, the instance version is defined over
 # BasisParams
-family{T<:ChebParams}(::Type{T}) = Cheb
-family_name{T<:ChebParams}(::Type{T}) = "Cheb"
-@generated Base.eltype{T<:ChebParams}(::Type{T}) = T.parameters[1]
+family(::Type{T}) where {T<:ChebParams} = Cheb
+family_name(::Type{T}) where {T<:ChebParams} = "Cheb"
+@generated Base.eltype(::Type{T}) where {T<:ChebParams} = T.parameters[1]
 
 # methods that only make sense for instances
 Base.min(cp::ChebParams) = cp.a
@@ -37,7 +37,7 @@ function Base.show(io::IO, p::ChebParams)
     print(io, m)
 end
 
-function nodes{T}(p::ChebParams{T}, ::Type{Val{0}})
+function nodes(p::ChebParams{T}, ::Type{Val{0}}) where T
     s = (p.b-p.a) / 2  # 21
     m = (p.b+p.a) / 2  # 22
     half = convert(T, 1/2)
@@ -58,7 +58,7 @@ function nodes(p::ChebParams, ::Type{Val{1}})
     x
 end
 
-function nodes{T}(p::ChebParams{T}, ::Type{Val{2}})
+function nodes(p::ChebParams{T}, ::Type{Val{2}}) where T
     s = (p.b-p.a) / 2  # 21
     m = (p.b+p.a) / 2  # 22
     k = pi*(zero(T):(p.n - one(T)))  # 33
@@ -161,10 +161,10 @@ function evalbase(p::ChebParams, x::AbstractArray, order::AbstractVector{Int}, n
     return B
 end
 
-_unscale{T<:Number}(p::ChebParams, x::T) = (2/(p.b-p.a)) * (x-(p.a+p.b)/2)
+_unscale(p::ChebParams, x::T) where {T<:Number} = (2/(p.b-p.a)) * (x-(p.a+p.b)/2)
 
-function evalbasex!{T<:Number}(out::AbstractMatrix, z::AbstractVector{T},
-                               p::ChebParams, x::AbstractVector{T})
+function evalbasex!(out::AbstractMatrix, z::AbstractVector{T},
+                    p::ChebParams, x::AbstractVector{T}) where T<:Number
     if size(out) != (size(x, 1), p.n)
         throw(DimensionMismatch("out must be (size(x, 1), p.n)"))
     end

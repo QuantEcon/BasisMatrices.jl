@@ -42,14 +42,10 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
 #re-exports
 export gridmake, gridmake!, ckron
 
-@compat abstract type BasisFamily end
-@compat abstract type BasisParams end
+abstract type BasisFamily end
+abstract type BasisParams end
 const IntSorV = Union{Int, AbstractVector{Int}}
-@static if VERSION >= v"0.6.0-dev.2123"
-    const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{<:AbstractVector}}
-else
-    const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{TypeVar(:TV,AbstractVector)}}
-end
+const TensorX = Union{Tuple{Vararg{AbstractVector}},AbstractVector{<:AbstractVector}}
 
 include("util.jl")
 include("spline_sparse.jl")
@@ -57,10 +53,10 @@ include("spline_sparse.jl")
 # include the families
 
 # BasisParams interface
-Base.issparse{T<:BasisParams}(::Type{T}) = false
+Base.issparse(::Type{T}) where {T<:BasisParams} = false
 Base.ndims(::BasisParams) = 1
 for f in [:family, :family_name, :(Base.issparse), :(Base.eltype)]
-    @eval $(f){T<:BasisParams}(::T) = $(f)(T)
+    @eval $(f)(::T) where {T<:BasisParams} = $(f)(T)
 end
 include("cheb.jl")
 include("lin.jl")
@@ -72,8 +68,8 @@ evalbase(p::BasisParams, x::Number, args...) = evalbase(p, [x], args...)
 
 # now some more interface methods that only make sense once we have defined
 # the subtypes
-basis_eltype{TP<:BasisParams}(::TP, x) = promote_type(eltype(TP), eltype(x))
-basis_eltype{TP<:BasisParams}(::Type{TP}, x) = promote_type(eltype(TP), eltype(x))
+basis_eltype(::TP, x) where {TP<:BasisParams} = promote_type(eltype(TP), eltype(x))
+basis_eltype(::Type{TP}, x) where {TP<:BasisParams} = promote_type(eltype(TP), eltype(x))
 """
     basis_eltype(p::Union{BasisParams,Type{<:BasisParams}, x)
 
@@ -88,31 +84,31 @@ basis_eltype
 # the default is just a dense matrix
 # because there is only one dense version, we will start with the sparse
 # case and overload for Cheb
-bmat_type{TP<:BasisParams}(::Type{TP}, x) = SparseMatrixCSC{basis_eltype(TP, x),Int}
-bmat_type{TP<:BasisParams,T2}(::Type{T2}, ::Type{TP}, x) = bmat_type(TP, x)
-function bmat_type{TP<:BasisParams,T2<:SplineSparse}(::Type{T2}, ::Type{TP}, x)
+bmat_type(::Type{TP}, x) where {TP<:BasisParams} = SparseMatrixCSC{basis_eltype(TP, x),Int}
+bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:BasisParams,T2} = bmat_type(TP, x)
+function bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:BasisParams,T2<:SplineSparse}
     SplineSparse{basis_eltype(TP, x),Int}
 end
 
-bmat_type{T<:ChebParams}(::Type{T}, x) = Matrix{basis_eltype(T, x)}
-function bmat_type{TP<:ChebParams,T2<:SplineSparse}(::Type{T2}, ::Type{TP}, x)
+bmat_type(::Type{T}, x) where {T<:ChebParams} = Matrix{basis_eltype(T, x)}
+function bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:ChebParams,T2<:SplineSparse}
     bmat_type(TP, x)
 end
 
 # version where there isn't an x passed
-bmat_type{TP<:BasisParams}(::Type{TP}) = bmat_type(TP, one(eltype(TP)))
-function bmat_type{TP<:BasisParams,T2}(::Type{T2}, ::Type{TP})
+bmat_type(::Type{TP}) where {TP<:BasisParams} = bmat_type(TP, one(eltype(TP)))
+function bmat_type(::Type{T2}, ::Type{TP}) where {TP<:BasisParams,T2}
     bmat_type(T2, TP, one(eltype(TP)))
 end
 
 # add methods to instances
-bmat_type{T<:BasisParams}(::T) = bmat_type(T)
-bmat_type{TF<:BasisParams,T2}(ss::Type{T2}, ::TF) = bmat_type(T2, TF)
-bmat_type{TF<:BasisParams,T2}(ss::Type{T2}, ::TF, x) = bmat_type(T2, TF, x)
+bmat_type(::T) where {T<:BasisParams} = bmat_type(T)
+bmat_type(ss::Type{T2}, ::TF) where {TF<:BasisParams,T2} = bmat_type(T2, TF)
+bmat_type(ss::Type{T2}, ::TF, x) where {TF<:BasisParams,T2} = bmat_type(T2, TF, x)
 
 # default method for evalbase with extra type hint is to just ignore the extra
 # type hint
-evalbase{T}(::Type{T}, bp::BasisParams, x, order) = evalbase(bp, x, order)
+evalbase(::Type{T}, bp::BasisParams, x, order) where {T} = evalbase(bp, x, order)
 
 
 # include other

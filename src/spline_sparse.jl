@@ -1,11 +1,11 @@
-immutable SplineSparse{T,I,n_chunks,chunk_len} <: AbstractSparseMatrix{T,I}
+struct SplineSparse{T,I,n_chunks,chunk_len} <: AbstractSparseMatrix{T,I}
     ncol::Int
     vals::Vector{T}
     cols::Vector{I}
 
-    function (::Type{SplineSparse{T,I,n_chunks,chunk_len}}){T,I,n_chunks,chunk_len}(
+    function SplineSparse{T,I,n_chunks,chunk_len}(
             col, vals, cols
-        )
+        ) where {T,I,n_chunks,chunk_len}
         if length(cols)*chunk_len != length(vals)
             error("vals and cols not conformable")
         end
@@ -13,28 +13,28 @@ immutable SplineSparse{T,I,n_chunks,chunk_len} <: AbstractSparseMatrix{T,I}
     end
 end
 
-function SplineSparse{T,I}(N::Int, L::Int, ncol::Int, vals::AbstractVector{T},
-                           cols::AbstractVector{I})
+function SplineSparse(N::Int, L::Int, ncol::Int, vals::AbstractVector{T},
+                      cols::AbstractVector{I}) where {T,I}
     SplineSparse{T,I,N,L}(ncol, vals, cols)
 end
 
-n_chunks{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = N
-chunk_len{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = L
-Base.eltype{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = T
-ind_type{T,I,N,L}(::Type{SplineSparse{T,I,N,L}}) = I
-Base.copy{T,I,N,L}(x::SplineSparse{T,I,N,L}) = SplineSparse{T,I,N,L}(x.ncol, x.vals, x.cols)
+n_chunks(::Type{SplineSparse{T,I,N,L}}) where {T,I,N,L} = N
+chunk_len(::Type{SplineSparse{T,I,N,L}}) where {T,I,N,L} = L
+Base.eltype(::Type{SplineSparse{T,I,N,L}}) where {T,I,N,L} = T
+ind_type(::Type{SplineSparse{T,I,N,L}}) where {T,I,N,L} = I
+Base.copy(x::SplineSparse{T,I,N,L}) where {T,I,N,L} = SplineSparse{T,I,N,L}(x.ncol, x.vals, x.cols)
 
 for f in [:n_chunks, :chunk_len, :(Base.eltype), :ind_type]
     @eval $(f)(s::SplineSparse) = $(f)(typeof(s))
 end
 
-@inline val_ix{T,I,N,L}(s::SplineSparse{T,I,N,L}, row, chunk, n) =
+@inline val_ix(s::SplineSparse{T,I,N,L}, row, chunk, n) where {T,I,N,L} =
     N*L*(row-1) + L*(chunk-1) + n
 
-@inline col_ix{T,I,N}(s::SplineSparse{T,I,N}, row, chunk) =
+@inline col_ix(s::SplineSparse{T,I,N}, row, chunk) where {T,I,N} =
     N*(row-1) + chunk
 
-function Base.full{T,I,N,L}(s::SplineSparse{T,I,N,L})
+function Base.full(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     out = zeros(T, nrow, s.ncol)
 
@@ -50,7 +50,7 @@ function Base.full{T,I,N,L}(s::SplineSparse{T,I,N,L})
     out
 end
 
-function Base.findnz{T,I,N,L}(s::SplineSparse{T,I,N,L})
+function Base.findnz(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     rows = repeat(collect(I, 1:nrow), inner=[N*L])
     cols = Array{I}(length(s.vals))
@@ -74,7 +74,7 @@ end
 
 Base.sparse(s::SplineSparse) = convert(SparseMatrixCSC, s)
 
-function Base.getindex{T,I,N,L}(s::SplineSparse{T,I,N,L}, row::Integer, cols::Integer)
+function Base.getindex(s::SplineSparse{T,I,N,L}, row::Integer, cols::Integer) where {T,I,N,L}
     for chunk in 1:N
         first_col = s.cols[col_ix(s, row, chunk)]
 
@@ -96,9 +96,9 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
                                          i == 2 ? s.ncol :
                                          1
 
-@generated function row_kron{T1,I1,N1,len1,T2,I2,N2,len2}(
+@generated function row_kron(
         s1::SplineSparse{T1,I1,N1,len1}, s2::SplineSparse{T2,I2,N2,len2}
-    )
+    ) where {T1,I1,N1,len1,T2,I2,N2,len2}
 
     # new number of chunks the length chunks times the number of chunks in
     # first matrix times number of chunks in second matrix
@@ -145,9 +145,9 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     end
 end
 
-function Base.A_mul_B!{T,I,N,L,Tout}(out::AbstractVector{Tout},
-                                     s::SplineSparse{T,I,N,L},
-                                     v::AbstractVector)
+function Base.A_mul_B!(out::AbstractVector{Tout},
+                       s::SplineSparse{T,I,N,L},
+                       v::AbstractVector) where {T,I,N,L,Tout}
     @inbounds for row in eachindex(out)
         val = zero(Tout)
         for chunk in 1:N
@@ -163,7 +163,7 @@ function Base.A_mul_B!{T,I,N,L,Tout}(out::AbstractVector{Tout},
     out
 end
 
-function *{T,T2}(s::SplineSparse{T}, v::AbstractVector{T2})
+function *(s::SplineSparse{T}, v::AbstractVector{T2}) where {T,T2}
     size(s, 2) == size(v, 1) || throw(DimensionMismatch())
 
     out_T = promote_type(T, T2)
@@ -174,7 +174,7 @@ end
 # TODO: define method A_mul_B!(ss::SplineSparse, csc::SparseMatrixCSC)
 # TODO: define method A_mul_B!(ss::SplineSparse, ss2::SplineSparse)
 
-function *{T,I,N,L,T2}(s::SplineSparse{T,I,N,L}, m::AbstractMatrix{T2})
+function *(s::SplineSparse{T,I,N,L}, m::AbstractMatrix{T2}) where {T,I,N,L,T2}
     size(s, 2) == size(m, 1) || throw(DimensionMismatch())
 
     out_T = promote_type(T, T2)
@@ -205,7 +205,7 @@ function \(s::SplineSparse, x::Union{AbstractVector,AbstractMatrix})
     sparse(s) \ x
 end
 
-function tensor_prod{T<:AbstractArray}(t::Type{T}, syms, inds, lens, add_index)
+function tensor_prod(t::Type{T}, syms, inds, lens, add_index) where T<:AbstractArray
     if length(syms) == 0
         subs = [:($(Symbol("i_", j)) + $(inds[j])) for j in length(inds):-1:1]
         out = Expr(:ref, :c, subs...)
@@ -228,14 +228,10 @@ end
 
 _ncol(x::AbstractArray) = size(x, 2)
 
-shape_c_expr{T<:AbstractVector}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))))
-shape_c_expr{T<:AbstractMatrix}(::Type{T}) = :(reshape(_c, reverse(_ncol.(rk.B))..., size(_c, 2)))
+shape_c_expr(::Type{T}) where {T<:AbstractVector} = :(reshape(_c, reverse(_ncol.(rk.B))))
+shape_c_expr(::Type{T}) where {T<:AbstractMatrix} = :(reshape(_c, reverse(_ncol.(rk.B))..., size(_c, 2)))
 
-@static if VERSION >= v"0.6.0-dev.2123"
-    const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
-else
-    const RKSS = RowKron{Tuple{Vararg{TypeVar(:SS,SplineSparse)}}}
-end
+const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
 
 # if we have all `SplineSparse`s we can special case out = rk*c
 @generated function Base.A_mul_B!(out::StridedVecOrMat,

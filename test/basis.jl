@@ -81,9 +81,9 @@
     @testset "test nodes" begin
         # extract nodes from individual basis
         n1, n2, n3 = nodes.(params)
-        @test (n1, [n1]) == @inferred nodes(b1)
-        @test (n2, [n2]) == @inferred nodes(b2)
-        @test (n3, [n3]) == @inferred nodes(b3)
+        @test (n1, (n1,)) == @inferred nodes(b1)
+        @test (n2, (n2,)) == @inferred nodes(b2)
+        @test (n3, (n3,)) == @inferred nodes(b3)
 
         # extract product nodes as well as nodes along both dimensions using
         # the 3d basis

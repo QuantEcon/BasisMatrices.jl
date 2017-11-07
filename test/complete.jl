@@ -1,6 +1,6 @@
 @testset "Testing logic using strings" begin
     if VERSION < v"0.6.0-dev.1833" # added in Julia PR #19548
-        Base.one{T<:AbstractString}(::Type{T}) = ""
+        Base.one(::Type{T}) where {T<:AbstractString} = ""
     end
     z = ["x ", "y ", "z "]
 

@@ -2,12 +2,12 @@
 # Piecewise linear Basis #
 # ---------------------- #
 
-immutable Lin <: BasisFamily end
+struct Lin <: BasisFamily end
 
-type LinParams{T<:AbstractVector} <: BasisParams
+mutable struct LinParams{T<:AbstractVector} <: BasisParams
     breaks::T
     evennum::Int
-    function (::Type{LinParams{T}}){T}(breaks::T, evennum::Int)
+    function LinParams{T}(breaks::T, evennum::Int) where T
         n = length(breaks)  # 28
         !(issorted(breaks)) && error("breaks should be increasing")
 
@@ -29,7 +29,7 @@ type LinParams{T<:AbstractVector} <: BasisParams
     end
 end
 
-LinParams{T<:AbstractVector}(breaks::T, evennum::Int=0) = LinParams{T}(breaks, evennum)
+LinParams(breaks::T, evennum::Int=0) where {T<:AbstractVector} = LinParams{T}(breaks, evennum)
 
 # constructor to take a, b, n and form linspace for breaks
 LinParams(n::Int, a::Real, b::Real) =
@@ -38,10 +38,10 @@ LinParams(n::Int, a::Real, b::Real) =
 ## BasisParams interface
 # define these methods on the type, the instance version is defined over
 # BasisParams
-family{T<:LinParams}(::Type{T}) = Lin
-family_name{T<:LinParams}(::Type{T}) = "Lin"
-Base.issparse{T<:LinParams}(::Type{T}) = true
-function Base.eltype{T}(::Type{LinParams{T}})
+family(::Type{T}) where {T<:LinParams} = Lin
+family_name(::Type{T}) where {T<:LinParams} = "Lin"
+Base.issparse(::Type{T}) where {T<:LinParams} = true
+function Base.eltype(::Type{LinParams{T}}) where T
     elT = eltype(T)
     elT <: Integer ? Float64 : elT
 end

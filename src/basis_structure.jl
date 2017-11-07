@@ -2,37 +2,37 @@
 # BasisMatrix Type #
 # ------------------- #
 
-@compat abstract type AbstractBasisMatrixRep end
+abstract type AbstractBasisMatrixRep end
 const ABSR = AbstractBasisMatrixRep
 
-immutable Tensor <: ABSR end
-immutable Direct <: ABSR end
-immutable Expanded <: ABSR end
+struct Tensor <: ABSR end
+struct Direct <: ABSR end
+struct Expanded <: ABSR end
 
-type BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
+mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
     order::Matrix{Int}
     vals::Matrix{TM}
 end
 
-Base.show{BST}(io::IO, b::BasisMatrix{BST}) =
+Base.show(io::IO, b::BasisMatrix{BST}) where {BST} =
     print(io, "BasisMatrix{$BST} of order $(b.order)")
 
 Base.ndims(bs::BasisMatrix) = size(bs.order, 2)
 
 # not the same if either type parameter is different
-function =={BST1<:ABSR,BST2<:ABSR}(::BasisMatrix{BST1}, ::BasisMatrix{BST2})
+function ==(::BasisMatrix{BST1}, ::BasisMatrix{BST2}) where {BST1<:ABSR,BST2<:ABSR}
     false
 end
 
-function =={BST<:ABSR,TM1<:AbstractMatrix,TM2<:AbstractMatrix}(::BasisMatrix{BST,TM1},
-                                                               ::BasisMatrix{BST,TM2})
+function ==(::BasisMatrix{BST,TM1},
+            ::BasisMatrix{BST,TM2}) where {BST<:ABSR,TM1<:AbstractMatrix,TM2<:AbstractMatrix}
     false
 end
 
 # if type parameters are the same, then it is the same if all fields are the
 # same
-function =={BST<:ABSR,TM<:AbstractMatrix}(b1::BasisMatrix{BST,TM},
-                                          b2::BasisMatrix{BST,TM})
+function ==(b1::BasisMatrix{BST,TM},
+            b2::BasisMatrix{BST,TM}) where {BST<:ABSR,TM<:AbstractMatrix}
     b1.order == b2.order && b1.vals == b2.vals
 end
 
@@ -45,7 +45,7 @@ end
     x
 end
 
-@inline function _checkx{T}(N, x::AbstractVector{T})
+@inline function _checkx(N, x::AbstractVector{T}) where T
     # if we have a 1d basis, we can evaluate at each point
     if N == 1
         return x
@@ -132,11 +132,11 @@ end
 # --------------- #
 
 # no-op. Don't worry about the order argument.
-Base.convert{T<:ABSR}(::Type{T}, bs::BasisMatrix{T}, order=bs.order) = bs
+Base.convert(::Type{T}, bs::BasisMatrix{T}, order=bs.order) where {T<:ABSR} = bs
 
 # funbconv from direct to expanded
-function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
-                      order=fill(0, 1, size(bs.order, 2)))
+function Base.convert(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
+                  order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
 
     vals = Array{TM}(numbas, 1)
@@ -152,8 +152,8 @@ function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
 end
 
 # funbconv from tensor to expanded
-function Base.convert{TM}(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
-                      order=fill(0, 1, size(bs.order, 2)))
+function Base.convert(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
+                  order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
 
     vals = Array{TM}(numbas, 1)
@@ -174,8 +174,8 @@ end
 #       plan on doing it much, this will do for now. The basic point is that
 #       we need to expand the rows of each element of `vals` so that all of
 #       them have prod([size(v, 1) for v in bs.vals])) rows.
-function Base.convert{TM}(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
-                          order=fill(0, 1, size(bs.order, 2)))
+function Base.convert(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
+                      order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
     vals = Array{TM}(numbas, d)
     raw_ind = Array{Vector{Int}}(d)
@@ -206,8 +206,8 @@ end
 
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
-function BasisMatrix{N,BF,T2}(::Type{T2}, basis::Basis{N,BF}, ::Direct,
-                              x::AbstractArray=nodes(basis)[1], order=0)
+function BasisMatrix(::Type{T2}, basis::Basis{N,BF}, ::Direct,
+                     x::AbstractArray=nodes(basis)[1], order=0) where {N,BF,T2}
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     # 76-77
     out_order = minorder
@@ -237,15 +237,15 @@ function BasisMatrix{N,BF,T2}(::Type{T2}, basis::Basis{N,BF}, ::Direct,
     BasisMatrix{Direct,val_type}(out_order, vals)
 end
 
-function BasisMatrix{T2}(::Type{T2}, basis::Basis, ::Expanded,
-                         x::AbstractArray=nodes(basis)[1], order=0)  # funbasex
+function BasisMatrix(::Type{T2}, basis::Basis, ::Expanded,
+                     x::AbstractArray=nodes(basis)[1], order=0) where T2  # funbasex
     # create direct form, then convert to expanded
     bsd = BasisMatrix(T2, basis, Direct(), x, order)
     convert(Expanded, bsd, bsd.order)
 end
 
-function BasisMatrix{N,BT,T2}(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
-                              x::TensorX=nodes(basis)[2], order=0)
+function BasisMatrix(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
+                     x::TensorX=nodes(basis)[2], order=0) where {N,BT,T2}
 
     m, order, minorder, numbases, x = check_basis_structure(N, x, order)
     out_order = minorder
@@ -276,29 +276,29 @@ end
 # When the user doesn't supply a ABSR, we pick one for them.
 # for x::AbstractMatrix we pick direct
 # for x::TensorX we pick Tensor
-function BasisMatrix{T2}(::Type{T2}, basis::Basis, x::AbstractArray, order=0)
+function BasisMatrix(::Type{T2}, basis::Basis, x::AbstractArray, order=0) where T2
     BasisMatrix(T2, basis, Direct(), x, order)
 end
 
-function BasisMatrix{T2}(::Type{T2}, basis::Basis, x::TensorX, order=0)
+function BasisMatrix(::Type{T2}, basis::Basis, x::TensorX, order=0) where T2
     BasisMatrix(T2, basis, Tensor(), x, order)
 end
 
 
 # method to allow passing types instead of instances of ABSR
-function BasisMatrix{BST<:ABSR,T2}(::Type{T2}, basis, ::Type{BST},
-                                   x::Union{AbstractArray,TensorX}, order=0)
+function BasisMatrix(::Type{T2}, basis, ::Type{BST},
+                     x::Union{AbstractArray,TensorX}, order=0) where {BST<:ABSR,T2}
     BasisMatrix(T2, basis, BST(), x, order)
 end
 
-function BasisMatrix{BST<:ABSR}(basis, ::Type{BST},
-                                x::Union{AbstractArray,TensorX}, order=0)
+function BasisMatrix(basis, ::Type{BST},
+                     x::Union{AbstractArray,TensorX}, order=0) where BST<:ABSR
     BasisMatrix(basis, BST(), x, order)
 end
 
 # method without vals eltypes
-function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::TBM,
-                                x::Union{AbstractArray,TensorX}, order=0)
+function BasisMatrix(basis::Basis, tbm::TBM,
+                     x::Union{AbstractArray,TensorX}, order=0) where TBM<:ABSR
     BasisMatrix(Void, basis, tbm, x, order)
 end
 
@@ -307,6 +307,6 @@ function BasisMatrix(basis::Basis, x::Union{AbstractArray,TensorX}, order=0)
 end
 
 # method without x
-function BasisMatrix{TBM<:ABSR}(basis::Basis, tbm::Union{Type{TBM},TBM})
+function BasisMatrix(basis::Basis, tbm::Union{Type{TBM},TBM}) where TBM<:ABSR
     BasisMatrix(Void, basis, tbm)
 end

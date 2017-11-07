@@ -4,29 +4,29 @@ for (T, TP) in [(Cheb, ChebParams), (Lin, LinParams), (Spline, SplineParams)]
 end
 
 # params of same type are equal if all their fields are equal
-=={T<:BasisParams}(p1::T, p2::T) =
+==(p1::T, p2::T) where {T<:BasisParams} =
     all(map(nm->getfield(p1, nm) == getfield(p2, nm), fieldnames(p1)))::Bool
 
 # Bases of different dimension can't be equal
-=={T1<:BasisParams,T2<:BasisParams}(::T1, ::T2) = false
+==(::T1, ::T2) where {T1<:BasisParams,T2<:BasisParams} = false
 
 # ---------- #
 # Basis Type #
 # ---------- #
 
-type Basis{N,TP<:Tuple}
+mutable struct Basis{N,TP<:Tuple}
     params::TP     # params to construct basis
 end
 
 Base.min(b::Basis) = min.(b.params)
 Base.max(b::Basis) = max.(b.params)
-Base.ndims{N}(::Basis{N}) = N
-Base.ndims{N,TP}(::Type{Basis{N,TP}}) = N
+Base.ndims(::Basis{N}) where {N} = N
+Base.ndims(::Type{Basis{N,TP}}) where {N,TP} = N
 
-_get_TP{N,TP}(::Basis{N,TP}) = TP
-_get_TP{N,TP}(::Type{Basis{N,TP}}) = TP
+_get_TP(::Basis{N,TP}) where {N,TP} = TP
+_get_TP(::Type{Basis{N,TP}}) where {N,TP} = TP
 
-function Base.show{N}(io::IO, b::Basis{N})
+function Base.show(io::IO, b::Basis{N}) where N
     m = """
     $N dimensional Basis on the hypercube formed by $(min(b)) × $(max(b)).
     Basis families are $(join(string.(family_name.(b.params)), " × "))
@@ -75,9 +75,9 @@ end
 # fundefn type method
 Basis(bt::BasisFamily, n::Int, a, b) = Basis(_param(bt)(n, a, b))
 
-Basis{T<:BasisFamily}(::Type{T}, n::Int, a, b) = Basis(T(), n, a, b)
+Basis(::Type{T}, n::Int, a, b) where {T<:BasisFamily} = Basis(T(), n, a, b)
 
-Basis{T<:BasisFamily}(bt::T, n::Vector, a::Vector, b::Vector) =
+Basis(bt::T, n::Vector, a::Vector, b::Vector) where {T<:BasisFamily} =
     Basis(map(_param(T), n, a, b)...)
 
 # special method for Spline that adds `k` argument
@@ -90,23 +90,23 @@ Basis(::Spline, n::Vector, a::Vector, b::Vector, k::Vector=ones(Int, length(n)))
 # ----------------- #
 
 # separating Basis -- just re construct it from the nth set of params
-function Base.getindex{N}(basis::Basis{N}, n::Int)
+function Base.getindex(basis::Basis{N}, n::Int) where N
     n < 0 || n > N && error("n must be between 1 and $N")
     Basis(basis.params[n])::Basis{1}
 end
 
-_all_sparse{N,TP}(b::Basis{N,TP}) = all(issparse, TP.parameters)
+_all_sparse(b::Basis{N,TP}) where {N,TP} = all(issparse, TP.parameters)
 
 # other AbstractArray like methods for Basis
 Base.length(b::Basis) = prod(length, b.params)
 Base.size(b::Basis, i::Int) = length(b[i])  # uses method on previous line
-Base.size{N}(b::Basis{N}) = map(length, b.params)
+Base.size(b::Basis{N}) where {N} = map(length, b.params)
 
 # Bases of different dimension can't be equal
-=={N,M}(::Basis{N}, ::Basis{M}) = false
+==(::Basis{N}, ::Basis{M}) where {N,M} = false
 
 # basis are equal if all fields of the basis are equal
-=={N}(b1::Basis{N}, b2::Basis{N}) =
+==(b1::Basis{N}, b2::Basis{N}) where {N} =
     all(map(nm->getfield(b1, nm) == getfield(b2, nm), fieldnames(b1)))::Bool
 
 function nodes(b::Basis{1})
@@ -120,7 +120,7 @@ function nodes(b::Basis)  # funnode method
     return x, xcoord
 end
 
-@generated function bmat_type{N,TP,TO}(::Type{TO}, bm::Basis{N,TP}, x=1.0)
+@generated function bmat_type(::Type{TO}, bm::Basis{N,TP}, x=1.0) where {N,TP,TO}
     if N == 1
         out = bmat_type(TO, TP.parameters[1], x)
     else

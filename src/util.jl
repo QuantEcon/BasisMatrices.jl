@@ -4,8 +4,8 @@
 import Base: *
 
 # ckronx.m -- DONE
-function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
-                                    ind::AbstractArray{Int}=1:length(b))
+function ckronx(b::AbstractMatrix{TM}, c::Array,
+                ind::AbstractArray{Int}=1:length(b)) where TM<:AbstractMatrix
     d = length(ind)  # 26
     n = Array{Int}(d)  # 27
     for i=1:d  # 28
@@ -29,7 +29,7 @@ function ckronx{TM<:AbstractMatrix}(b::AbstractMatrix{TM}, c::Array,
 end
 
 # dprod.m  - DONE
-function row_kron{S,T}(A::AbstractMatrix{S}, B::AbstractMatrix{T})
+function row_kron(A::AbstractMatrix{S}, B::AbstractMatrix{T}) where {S,T}
     out = _allocate_row_kron_out(A, B)
     row_kron!(out, A, B)
 end
@@ -96,7 +96,7 @@ function row_kron!(out::SparseMatrixCSC, A::SparseMatrixCSC, B::SparseMatrixCSC)
     out
 end
 
-function row_kron!{T}(out::SparseMatrixCSC, A::AbstractMatrix{T}, B::SparseMatrixCSC)
+function row_kron!(out::SparseMatrixCSC, A::AbstractMatrix{T}, B::SparseMatrixCSC) where T
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -133,7 +133,7 @@ function row_kron!{T}(out::SparseMatrixCSC, A::AbstractMatrix{T}, B::SparseMatri
 end
 
 
-function row_kron!{T}(out::SparseMatrixCSC, A::SparseMatrixCSC, B::AbstractMatrix{T})
+function row_kron!(out::SparseMatrixCSC, A::SparseMatrixCSC, B::AbstractMatrix{T}) where T
     colptr = out.colptr
     rowval = out.rowval
     nzval = out.nzval
@@ -166,7 +166,7 @@ function row_kron!{T}(out::SparseMatrixCSC, A::SparseMatrixCSC, B::AbstractMatri
 end
 
 # ckronxi.m -- DONE
-ckronxi{T<:Number}(b::Matrix{T}, c, ind=1:length(b)) = b \ c  # 23
+ckronxi(b::Matrix{T}, c, ind=1:length(b)) where {T<:Number} = b \ c  # 23
 
 function ckronxi(b::Array, c, ind=1:length(b))
     d = length(ind)  # 25
@@ -184,14 +184,8 @@ function ckronxi(b::Array, c, ind=1:length(b))
     reshape(z, mm, size(c, 2))  # 39
 end
 
-@static if VERSION >= v"0.6.0-dev.2123"
-    immutable RowKron{T<:Tuple{Vararg{<:AbstractMatrix}}}
-        B::T
-    end
-else
-    immutable RowKron{T<:Tuple{Vararg{TypeVar(:TM, AbstractMatrix)}}}
-        B::T
-    end
+struct RowKron{T<:Tuple{Vararg{<:AbstractMatrix}}}
+    B::T
 end
 
 function RowKron(B::AbstractMatrix...)
@@ -205,7 +199,7 @@ function RowKron(B::AbstractMatrix...)
 end
 
 Base.length(rk::RowKron) = length(rk.B)
-@generated Base.eltype{T}(::RowKron{T}) =
+@generated Base.eltype(::RowKron{T}) where {T} =
     reduce(promote_type, map(eltype, T.parameters))
 
 Base.issparse(rk::RowKron) = map(issparse, rk.B)
@@ -375,10 +369,10 @@ function Base.At_mul_B(rk::RowKron, c::StridedMatrix)
 end
 
 # cdprodx.m -- DONE
-cdprodx{T<:Number}(b::Matrix{T}, c, ind=1:prod(size(b))) = b*c  # 39
+cdprodx(b::Matrix{T}, c, ind=1:prod(size(b))) where {T<:Number} = b*c  # 39
 
-function cdprodx{T<:AbstractMatrix}(b::AbstractArray{T}, c::StridedVecOrMat,
-                 ind::AbstractArray{Int}=1:prod(size(b)))
+function cdprodx(b::AbstractArray{T}, c::StridedVecOrMat,
+ind::AbstractArray{Int}=1:prod(size(b))) where T<:AbstractMatrix
     _check_cdprodx(b, c, ind)
     rk = RowKron(b[ind]...)
     rk*c
@@ -390,7 +384,7 @@ function nodeunif(n::Int, a::Int, b::Int)
     return x, x
 end
 
-function nodeunif{T<:Integer}(n::AbstractArray{T}, a::AbstractArray, b::AbstractArray)
+function nodeunif(n::AbstractArray{T}, a::AbstractArray, b::AbstractArray) where T<:Integer
     d = length(n)
     xcoord = Array{AbstractVector}(d)
     for k=1:d
@@ -576,7 +570,7 @@ function _check_cdprodx(b::Array, c, ind::AbstractArray{Int})
     @assert _ind_min > 0 && _ind_max <= length(b) "ind not conformable"
 end
 
-function _nnz_per_row{T}(A::Matrix{T})
+function _nnz_per_row(A::Matrix{T}) where T
     counts = zeros(Int, size(A, 1))
     my_zero = zero(T)
     @inbounds for col in 1:size(A, 2), row in 1:size(A, 1)
@@ -587,7 +581,7 @@ function _nnz_per_row{T}(A::Matrix{T})
     counts
 end
 
-function _nnz_per_row{T}(A::SparseMatrixCSC{T})
+function _nnz_per_row(A::SparseMatrixCSC{T}) where T
     counts = zeros(Int, size(A, 1))
     @inbounds for col in 1:size(A, 2), ptr in A.colptr[col]:(A.colptr[col+1]-1)
         counts[A.rowval[ptr]] += 1
@@ -606,9 +600,9 @@ function _row_kron_sparse_out_nnz(A, B)
     k
 end
 
-function _allocate_row_kron_out{T,S}(::Type{SparseMatrixCSC},
-                                     A::AbstractMatrix{T},
-                                     B::AbstractMatrix{S})
+function _allocate_row_kron_out(::Type{SparseMatrixCSC},
+                                A::AbstractMatrix{T},
+                                B::AbstractMatrix{S}) where {T,S}
     nobsa, na = size(A)
     nobsb, nb = size(B)
     k = _row_kron_sparse_out_nnz(A, B)
@@ -619,9 +613,9 @@ function _allocate_row_kron_out{T,S}(::Type{SparseMatrixCSC},
     )
 end
 
-function _allocate_row_kron_out{T,S}(::Type{Matrix},
-                                     A::AbstractMatrix{T},
-                                     B::AbstractMatrix{S})
+function _allocate_row_kron_out(::Type{Matrix},
+                                A::AbstractMatrix{T},
+                                B::AbstractMatrix{S}) where {T,S}
     nobsa, na = size(A)
     nobsb, nb = size(B)
     Array{promote_type(S,T)}(nobsa, na*nb)

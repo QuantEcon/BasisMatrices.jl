@@ -19,9 +19,9 @@ Krueger, Dirk, and Felix Kubler. 2004. "Computing Equilibrium in OLG
 # include helper file
 include("smol_util.jl")
 
-immutable Smolyak <: BasisFamily end
+struct Smolyak <: BasisFamily end
 
-immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
+struct SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     d::Int
     mu::Tmu
     a::Vector{T}
@@ -31,9 +31,9 @@ immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     inds::Vector{Vector{Int}}  # Smolyak indices
     pinds::Matrix{Int64}  # Polynomial indices
 
-    function (::Type{SmolyakParams{T,Tmu}}){T,Tmu}(
+    function SmolyakParams{T,Tmu}(
             d::Int, mu::Tmu, a::Vector{T}, b::Vector{T}
-        )
+        ) where {T,Tmu}
         d < 2 && error("You passed d = $d. d must be greater than 1")
         if length(mu) > 1
             # working on building an anisotropic grid
@@ -55,8 +55,8 @@ immutable SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     end
 end
 
-function SmolyakParams{T,Tmu}(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
-                              b::Vector{T}=fill(1.0, d))
+function SmolyakParams(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
+                       b::Vector{T}=fill(1.0, d)) where {T,Tmu}
     SmolyakParams{T,Tmu}(d, mu, a, b)
 end
 
@@ -71,8 +71,8 @@ function build_grid(sp::SmolyakParams, inds::Vector{Vector{Int}}=sp.inds)
     build_grid(sp.d, sp.mu, inds)
 end
 
-function build_B!{T}(out::AbstractMatrix{T}, sp::SmolyakParams,
-                     pts::Matrix{Float64}, b_inds::Matrix{Int64}=sp.pinds)
+function build_B!(out::AbstractMatrix{T}, sp::SmolyakParams,
+                  pts::Matrix{Float64}, b_inds::Matrix{Int64}=sp.pinds) where T
     build_B!(out, sp.d, sp.mu, pts, b_inds)
 end
 
@@ -96,9 +96,9 @@ cube2dom(pts::AbstractMatrix, sp::SmolyakParams) = cube2dom(pts, sp.a, sp.b)
 ## BasisParams interface
 # define these methods on the type, the instance version is defined over
 # BasisParams
-family{T<:SmolyakParams}(::Type{T}) = Smolyak
-family_name{T<:SmolyakParams}(::Type{T}) = "Smolyak"
-Base.eltype{T1,T2}(::Type{SmolyakParams{T1,T2}}) = T1
+family(::Type{T}) where {T<:SmolyakParams} = Smolyak
+family_name(::Type{T}) where {T<:SmolyakParams} = "Smolyak"
+Base.eltype(::Type{SmolyakParams{T1,T2}}) where {T1,T2} = T1
 
 # methods that only make sense for instances
 Base.min(p::SmolyakParams) = p.a
@@ -115,7 +115,7 @@ end
 function Base.length{T,Ti<:Integer}(sp::SmolyakParams{T,Ti})::Int
     d, mu = sp.d, sp.mu
     mu == 1 ? 2d - 1 :
-    mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ):
+    mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ) :
     mu == 3 ? Int(1 + 8d + 12d*(d-1)/2 + 8d*(d-1)*(d-2)/6) :
     error("We only know the number of grid points for mu ∈ [1, 2, 3]")
 end

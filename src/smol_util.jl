@@ -1,12 +1,12 @@
 # Unrelated to the actual grid, just stuff we use
 
-immutable Permuter{T<:AbstractVector}
+struct Permuter{T<:AbstractVector}
     a::T
     len::Int
     # sort so we can deal with repeated elements
-    (::Type{Permuter{T}}){T}(a::T) = new{T}(sort(a), length(a))
+    Permuter{T}(a::T) where {T} = new{T}(sort(a), length(a))
 end
-Permuter{T<:AbstractVector}(a::T) = Permuter{T}(a)
+Permuter(a::T) where {T<:AbstractVector} = Permuter{T}(a)
 
 Base.start(p::Permuter) = p.len
 Base.done(p::Permuter, i::Int) = i == 0
@@ -61,7 +61,7 @@ function m_i(i::Int)
     i == 0 ? 0 : i == 1 ? 1 : 2^(i - 1) + 1
 end
 
-function cheby2n{T<:Number}(x::AbstractArray{T}, n::Int, kind::Int=1)
+function cheby2n(x::AbstractArray{T}, n::Int, kind::Int=1) where T<:Number
     out = Array{T}(size(x)..., n+1)
     cheby2n!(out, x, n, kind)
 end
@@ -72,8 +72,8 @@ evaluated at each point in `x` and places them in `out`. The trailing dimension
 of `out` indexes the chebyshev polynomials. All inner dimensions correspond to
 points in `x`.
 """
-function cheby2n!{T<:Number,N}(out::AbstractArray{T}, x::AbstractArray{T,N},
-                               n::Int, kind::Int=1)
+function cheby2n!(out::AbstractArray{T}, x::AbstractArray{T,N},
+                  n::Int, kind::Int=1) where {T<:Number,N}
     if size(out) != tuple(size(x)..., n+1)
         error("out must have dimensions $(tuple(size(x)..., n+1))")
     end
@@ -261,8 +261,8 @@ end
 Compute the matrix `B(pts)` from equation 22 in JMMV 2013. This is the basis
 matrix
 """
-function build_B!{T}(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
-                     pts::Matrix{Float64}, b_inds::Matrix{Int64})
+function build_B!(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
+                  pts::Matrix{Float64}, b_inds::Matrix{Int64}) where T
     # check dimensions
     npolys = size(b_inds, 1)
     npts = size(pts, 1)
@@ -326,6 +326,6 @@ end
 
 for f in [:dom2cube!, :cube2dom!]
     no_bang = Symbol(string(f)[1:end-1])
-    @eval $(no_bang){T}(pts::AbstractMatrix{T}, lb::AbstractVector, ub::AbstractVector) =
+    @eval $(no_bang)(pts::AbstractMatrix{T}, lb::AbstractVector, ub::AbstractVector) where {T} =
         $(f)(Array{T}(size(pts, 1), length(lb)), pts, lb, ub)
 end

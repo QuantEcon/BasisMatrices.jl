@@ -89,7 +89,8 @@ function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # fun
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
 
-    f = Array{eltype(c),3}(nx, size(c, 2), kk)  # 100
+    _T = promote_type(eltype(c), eltype(bs))
+    f = Array{_T,3}(nx, size(c, 2), kk)  # 100
 
     for i=1:kk
         f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
@@ -102,7 +103,8 @@ function _funeval(c, bs::BasisMatrix{Direct}, order::AbstractMatrix{Int})  # fun
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
     order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
 
-    f = Array{eltype(c),3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
+    _T = promote_type(eltype(c), eltype(bs))
+    f = Array{_T,3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i in 1:kk
         f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
@@ -113,7 +115,9 @@ end
 function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # funeval3
     nx = size(bs.vals[1], 1)
     kk = size(order, 1)
-    f = Array{promote_type(eltype(c),eltype(bs.vals[1])),3}(nx, size(c, 2), kk)
+
+    _T = promote_type(eltype(c), eltype(bs))
+    f = Array{_T,3}(nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
         ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)

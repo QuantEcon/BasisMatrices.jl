@@ -14,6 +14,8 @@ mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
     vals::Matrix{TM}
 end
 
+Base.eltype(bm::BasisMatrix{BST,TM}) where {BST, TM} = eltype(TM)
+
 Base.show(io::IO, b::BasisMatrix{BST}) where {BST} =
     print(io, "BasisMatrix{$BST} of order $(b.order)")
 

@@ -57,7 +57,7 @@ function Base.show(io::IO, p::LinParams)
     print(io, m)
 end
 
-nodes(p::LinParams) = p.breaks
+nodes(p::LinParams) = collect(p.breaks)
 
 function derivative_op(p::LinParams, x, order::Int=1)
     breaks, evennum = p.breaks, p.evennum

@@ -163,8 +163,8 @@ end
 
 _unscale(p::ChebParams, x::T) where {T<:Number} = (2/(p.b-p.a)) * (x-(p.a+p.b)/2)
 
-function evalbasex!(out::AbstractMatrix, z::AbstractVector{T},
-                    p::ChebParams, x::AbstractVector{T}) where T<:Number
+function evalbasex!(out::AbstractMatrix, z::AbstractArray{T},
+                    p::ChebParams, x::AbstractArray{T}) where T<:Number
     if size(out) != (size(x, 1), p.n)
         throw(DimensionMismatch("out must be (size(x, 1), p.n)"))
     end

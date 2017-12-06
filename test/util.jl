@@ -60,6 +60,8 @@ end
     # fit the interpoland in Tensor form (tensor b/c using x12)
     c, bs = funfitxy(basis, x12, y);
 
+    # TODO: why does bs.vals[1] have eltype Any?
+
     # verify that we are actually interpolating -- all heavy lifting in funeval
     # is done by ckronx so this is effectively testing that we wrote that
     # function properly

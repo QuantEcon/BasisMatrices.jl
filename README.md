@@ -145,13 +145,17 @@ struct Expanded <: ABSR end
 
 ```julia
 mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
-    order::Matrix{Int}
+    order::BMOrder
     vals::Matrix{TM}
+end
+
+struct BMOrder
+    dims::Vector{Int}
+    order::Matrix{Int}
 end
 ```
 
 The `order` field keeps track of what order of derivative or integral the arrays inside `vals` correspond to.
-
 
 The content inside `vals` will vary based on the type Parameter `BST<:AbstractBasisMatrixRep`:
 

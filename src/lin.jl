@@ -178,18 +178,13 @@ function evalbase(
     return SplineSparse{T,Int,1,2}(n, z, ind)
 end
 
-function evalbase(
-        p::LinParams, x::Union{Real,AbstractArray}=nodes(p),
-        order::Int=0
-    )
+function evalbase(p::LinParams, x::Union{Real,AbstractArray}=nodes(p), order=0)
     evalbase(SparseMatrixCSC, p, x, order)
 end
 
-function evalbase(p::LinParams, x, order::AbstractArray{Int})
-    out = Array{SparseMatrixCSC{basis_eltype(p,x),Int}}(size(order))
-
-    for I in eachindex(order)
-        out[I] = evalbase(p, x, order[I])
-    end
-    return out
+function evalbase(
+        ::Type{T}, p::LinParams,
+        x::Union{Real,AbstractArray}, order::AbstractVector{Int}
+    ) where {T}
+    [evalbase(T, p, x, ord) for ord in order]
 end

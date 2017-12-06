@@ -42,9 +42,9 @@
     end
 
     @testset "test convert methods" begin
-        @test  Φ_direct  ==  convert(Direct, Φ_tensor)
-        @test  Φ_expanded  ==  convert(Expanded, Φ_direct)
-        @test  Φ_expanded  ==  convert(Expanded, Φ_tensor)
+        @test Φ_direct == convert(Direct, Φ_tensor)
+        @test Φ_expanded == convert(Expanded, Φ_direct)
+        @test Φ_expanded == convert(Expanded, Φ_tensor)
         @test ==(Φ_expanded,
                  convert(Expanded, convert(Direct, Φ_tensor)))
 
@@ -95,13 +95,6 @@
         @test_throws ErrorException BasisMatrices._checkx(2, rand(1, 3))
         @test_throws ErrorException BasisMatrices._checkx(2, rand(3))
         @test_throws ErrorException BasisMatrices._checkx(2, [rand(2) for i=1:3])
-
-        ## test check_convert
-        for Φ in (Φ_expanded, Φ_direct, Φ_tensor)
-            @test BasisMatrices.check_convert(Φ, zeros(1, 3)) == (3, 1, 3)
-            @test_throws ErrorException BasisMatrices.check_convert(Φ, zeros(1, 2))
-            @test_throws ErrorException BasisMatrices.check_convert(Φ, fill(-1, 1, 3))
-        end
 
         ## test check_basis_structure
         @testset "test check_basis_structure" begin

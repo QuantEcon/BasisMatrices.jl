@@ -1,17 +1,17 @@
 @testset "Smolyak" begin
 
     # build some SmolyakParams objects to test with
-    p1 = SmolyakParams(3, 3)
-    p2 = SmolyakParams(2, [3, 2])
-    p3 = SmolyakParams(2, 3, [-3.0, -4.0], [1.5, 2.5])
-    p4 = SmolyakParams(2, [3, 4], [-3.0, -4.0], [1.5, 2.5])
-    p5 = SmolyakParams(2, 3, Float32[-3.0, -4.0], Float32[1.5, 2.5])
+    p1 = SmolyakParams(Val{3}, 3)
+    p2 = SmolyakParams(Val{2}, [3, 2])
+    p3 = SmolyakParams(Val{2}, 3, [-3.0, -4.0], [1.5, 2.5])
+    p4 = SmolyakParams(Val{2}, [3, 4], [-3.0, -4.0], [1.5, 2.5])
+    p5 = SmolyakParams(Val{2}, 3, Float32[-3.0, -4.0], Float32[1.5, 2.5])
 
     # check error paths for constructors
-    @test_throws ErrorException SmolyakParams(1, 3)
-    @test_throws ErrorException SmolyakParams(2, [3, 2, 3])
-    @test_throws ErrorException SmolyakParams(2, [3, 0])
-    @test_throws ErrorException SmolyakParams(2, 0)
+    @test_throws ErrorException SmolyakParams(Val{1}, 3)
+    @test_throws ErrorException SmolyakParams(Val{2}, [3, 2, 3])
+    @test_throws ErrorException SmolyakParams(Val{2}, [3, 0])
+    @test_throws ErrorException SmolyakParams(Val{2}, 0)
 
     @test Float64 == @inferred eltype(p1)
     @test Float64 == @inferred eltype(p2)
@@ -24,6 +24,12 @@
     @test 2 == @inferred ndims(p3)
     @test 2 == @inferred ndims(p4)
     @test 2 == @inferred ndims(p5)
+
+    @test 3 == @inferred ndims(typeof(p1))
+    @test 2 == @inferred ndims(typeof(p2))
+    @test 2 == @inferred ndims(typeof(p3))
+    @test 2 == @inferred ndims(typeof(p4))
+    @test 2 == @inferred ndims(typeof(p5))
 
     @test [-1.0, -1.0, -1.0] == @inferred min(p1)
     @test [-1.0, -1.0] == @inferred min(p2)
@@ -476,7 +482,7 @@
 
             # dom2cube
             cube = @inferred BasisMatrices.dom2cube(X, p)
-            @test cube ≈ BasisMatrices.build_grid(p.d, p.mu)
+            @test cube ≈ BasisMatrices.build_grid(ndims(p), p.mu)
             out = zeros(cube)
             BasisMatrices.dom2cube!(out, X, p)
             @test cube ≈ out
@@ -488,11 +494,11 @@
             @test X ≈ out
 
             # smol_inds, poly_inds
-            @test BasisMatrices.smol_inds(p.d, p.mu) == @inferred BasisMatrices.smol_inds(p)
-            @test BasisMatrices.poly_inds(p.d, p.mu) == @inferred BasisMatrices.poly_inds(p)
+            @test BasisMatrices.smol_inds(ndims(p), p.mu) == @inferred BasisMatrices.smol_inds(p)
+            @test BasisMatrices.poly_inds(ndims(p), p.mu) == @inferred BasisMatrices.poly_inds(p)
 
             # build_B
-            want = BasisMatrices.build_B(p.d, p.mu, cube, p.pinds)
+            want = BasisMatrices.build_B(ndims(p), p.mu, cube, p.pinds)
             @test want ≈ @inferred BasisMatrices.build_B(p, cube)
             out = zeros(want)
             BasisMatrices.build_B!(out, p, cube)
@@ -506,14 +512,25 @@
         for p in (p1, p2, p3, p4, p5)
             X = BasisMatrices.nodes(p)
             cube = BasisMatrices.dom2cube(X, p)
-            want = BasisMatrices.build_B(p.d, p.mu, cube, p.pinds)
+            want = BasisMatrices.build_B(ndims(p), p.mu, cube, p.pinds)
             @test want ≈ @inferred BasisMatrices.evalbase(p, X)
 
-            cube2 = 2 .* (rand(50, p.d) .- 0.5)
-            want2 = BasisMatrices.build_B(p.d, p.mu, cube2, p.pinds)
+            cube2 = 2 .* (rand(50, ndims(p)) .- 0.5)
+            want2 = BasisMatrices.build_B(ndims(p), p.mu, cube2, p.pinds)
             X2 = BasisMatrices.cube2dom(cube2, p)
             @test want2 ≈ @inferred BasisMatrices.evalbase(p, X2)
 
+        end
+    end
+
+    @testset "Smolyak and Basis" begin
+        for p in (p1, p2, p3, p4, p5)
+            b = Basis(p)
+            @test ndims(b) == ndims(p)
+            for _p in (p1, p2, p3, p4, p5)
+                _b = Basis(p, _p)
+                @test ndims(_b) == ndims(p) + ndims(_p)
+            end
         end
     end
 end

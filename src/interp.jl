@@ -13,7 +13,7 @@ function get_coefs(basis::Basis, bs::BasisMatrix{Tensor}, y::Matrix{T}) where T
 end
 
 function _get_coefs_deep(basis::Basis, bs::BasisMatrix{Tensor}, y)
-    if any(bs.order[1, :] .!= 0)
+    if any(bs.order.order[1, :] .!= 0)
         error("invalid basis structure - first elements must be order 0")
     end
     to_kron = bs.vals[1, :]  # 68
@@ -79,12 +79,40 @@ Base.:\(b::Basis, f::Function) = funfitf(b, f)
 # ---------- #
 # Evaluation #
 # ---------- #
+function _extract_inds(bm::BasisMatrix, order::AbstractMatrix{Int})
+    d = size(order, 2)
+
+    # column ranges for each entry in `bm.vals`
+    cols = _dims_to_colspans(bm.order)
+
+    # allocate the output
+    out = Array{Int}(size(order, 1), length(cols))
+    val_size = size(bm.vals)
+
+    for row in 1:size(out, 1)
+        for (chunk_ix, chunk) in enumerate(cols)
+            success = false
+            for row_have in 1:size(bm.order.order, 1)
+                if order[row, chunk] == bm.order.order[row_have, chunk]
+                    out[row, chunk_ix] = sub2ind(val_size, row_have, chunk_ix)
+                    success = true
+                    break
+                end
+            end
+            if !success
+                m = "Couldn't find $(order[row, chunk]) in BasisMatrix"
+                error(m)
+            end
+        end
+    end
+    flipdim(out, 2)
+end
 
 function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # funeval1
     kk, d = size(order)  # 95
 
     # 98 reverse the order of evaluation: B(d) × B(d-1) × ⋯ × B(1)
-    order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
+    inds = _extract_inds(bs, order)
 
     # 99
     nx = prod([size(bs.vals[1, j], 1) for j=1:d])
@@ -92,8 +120,8 @@ function _funeval(c, bs::BasisMatrix{Tensor}, order::AbstractMatrix{Int})  # fun
     _T = promote_type(eltype(c), eltype(bs))
     f = Array{_T,3}(nx, size(c, 2), kk)  # 100
 
-    for i=1:kk
-        f[:, :, i] = ckronx(bs.vals, c, order[i, :])  # 102
+    for i in 1:kk
+        f[:, :, i] = ckronx(bs.vals, c, inds[i, :])  # 102
     end
     f
 end
@@ -101,13 +129,13 @@ end
 function _funeval(c, bs::BasisMatrix{Direct}, order::AbstractMatrix{Int})  # funeval2
     kk, d = size(order)  # 95
     # 114 reverse the order of evaluation: B(d)xB(d-1)x...xB(1)
-    order = flipdim(order .+ (size(bs.vals, 1)*(0:d-1)' - bs.order+1), 2)
+    inds = _extract_inds(bs, order)
 
     _T = promote_type(eltype(c), eltype(bs))
     f = Array{_T,3}(size(bs.vals[1], 1), size(c, 2), kk)  # 116
 
     for i in 1:kk
-        f[:, :, i] = cdprodx(bs.vals, c, order[i, :])  # 118
+        f[:, :, i] = cdprodx(bs.vals, c, inds[i, :])  # 118
     end
     f
 end
@@ -120,7 +148,7 @@ function _funeval(c, bs::BasisMatrix{Expanded}, order::AbstractMatrix{Int})  # f
     f = Array{_T,3}(nx, size(c, 2), kk)
     for i=1:kk
         this_order = order[i, :]
-        ind = findfirst(x->bs.order[x, :] == this_order, 1:kk)
+        ind = findfirst(x->bs.order.order[x, :] == this_order, 1:kk)
         if ind == 0
             msg = string("Requested order $(this_order) not in BasisMatrix ",
                          "with order $(bs.order)")
@@ -223,12 +251,12 @@ end
 
 # default method
 function funeval(c::AbstractVector, bs::BasisMatrix,
-                 order::Vector{Int}=fill(0, size(bs.order, 2)))
+                 order::Vector{Int}=fill(0, size(bs.order.order, 2)))
     _funeval(c, bs, reshape(order, 1, length(order)))[:, 1, 1]
 end
 
 function funeval(c::AbstractMatrix, bs::BasisMatrix,
-                 order::Vector{Int}=fill(1, size(bs.order, 2)))
+                 order::Vector{Int}=fill(1, size(bs.order.order, 2)))
     _funeval(c, bs, reshape(order, 1, length(order)))[:, :, 1]
 end
 

@@ -110,4 +110,43 @@ holder = (
     @test_throws ErrorException funeval(c_direct, basis, x12, 1)
     @test_throws ErrorException funeval(c_direct, basis, X, 1)
 
+    _order = fill(0, 1, ndims(basis))
+    @test BasisMatrices._extract_inds(BasisMatrix(basis, Direct()), _order) == [2 1]
+
 end # testset
+
+@testset "multi dim params" begin
+    sp = SmolyakParams(Val{2}, 3, zeros(2), ones(2))
+    pc = ChebParams(10, -4, 4)
+    order = [0 0 0 0 0 0; 1 0 0 0 0 1; 1 0 0 0 0 0]
+    bm = BasisMatrix(Basis(pc, sp, sp, pc), Direct(), fill(0.4, 1, 6), order)
+
+    @test size(bm.vals) == (2, 4)
+    @test bm.vals[1, 1] ==  BasisMatrices.evalbase(pc, [0.4], 0)
+    @test bm.vals[1, 2] ==  BasisMatrices.evalbase(sp, [0.4 0.4], 0)
+    @test bm.vals[1, 3] ==  BasisMatrices.evalbase(sp, [0.4 0.4], 0)
+    @test bm.vals[1, 4] ==  BasisMatrices.evalbase(pc, [0.4], 0)
+
+    @test bm.vals[2, 1] ==  BasisMatrices.evalbase(pc, [0.4], 1)
+    @test_throws UndefRefError bm.vals[2, 2]
+    @test_throws UndefRefError bm.vals[2, 3]
+    @test bm.vals[2, 4] ==  BasisMatrices.evalbase(pc, [0.4], 1)
+
+
+    row1 = [7 5 3 1]
+    row2 = [7 5 3 2]
+    row3 = [8 5 3 1]
+    row4 = [8 5 3 2]
+    ord1 = [0 0 0 0 0 0]
+    ord2 = [1 0 0 0 0 0]
+    ord3 = [0 0 0 0 0 1]
+    ord4 = [1 0 0 0 0 1]
+
+    for (want, arg) in zip(
+            [row1, row2, row3, row4, [row1; row2], [row1; row3], [row1; row4], [row1; row2; row3], [row1; row2; row4], [row1; row2; row3; row4]],
+            [ord1, ord2, ord3, ord4, [ord1; ord2], [ord1; ord3], [ord1; ord4], [ord1; ord2; ord3], [ord1; ord2; ord4], [ord1; ord2; ord3; ord4]]
+        )
+        @test BasisMatrices._extract_inds(bm, arg) == want
+    end
+    # TODO: _extract_inds, BasisMatrix, convert, funeval, cdprodx, ckronx
+end  # testset

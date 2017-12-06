@@ -23,8 +23,7 @@ Base.max(b::Basis) = max.(b.params)
 Base.ndims(::Basis{N}) where {N} = N
 Base.ndims(::Type{Basis{N,TP}}) where {N,TP} = N
 
-_get_TP(::Basis{N,TP}) where {N,TP} = TP
-_get_TP(::Type{Basis{N,TP}}) where {N,TP} = TP
+_get_TP(::Union{Basis{N,TP},Type{Basis{N,TP}}}) where {N,TP} = TP
 
 function Base.show(io::IO, b::Basis{N}) where N
     m = """
@@ -39,7 +38,7 @@ Basis(params::Tuple) = _Basis(params)
 
 # hack to make method above type stable
 @generated function _Basis(params)
-    N = length(params.parameters)
+    N = sum(ndims, params.parameters)
     quote
         Basis{$N,$params}(params)
     end

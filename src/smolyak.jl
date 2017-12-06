@@ -21,8 +21,7 @@ include("smol_util.jl")
 
 struct Smolyak <: BasisFamily end
 
-struct SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
-    d::Int
+struct SmolyakParams{T,Tmu<:IntSorV,d} <: BasisParams
     mu::Tmu
     a::Vector{T}
     b::Vector{T}
@@ -31,9 +30,9 @@ struct SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
     inds::Vector{Vector{Int}}  # Smolyak indices
     pinds::Matrix{Int64}  # Polynomial indices
 
-    function SmolyakParams{T,Tmu}(
-            d::Int, mu::Tmu, a::Vector{T}, b::Vector{T}
-        ) where {T,Tmu}
+    function SmolyakParams{T,Tmu,d}(
+            mu::Tmu, a::Vector{T}, b::Vector{T}
+        ) where {T,Tmu,d}
         d < 2 && error("You passed d = $d. d must be greater than 1")
         if length(mu) > 1
             # working on building an anisotropic grid
@@ -51,29 +50,37 @@ struct SmolyakParams{T,Tmu<:IntSorV} <: BasisParams
         inds = smol_inds(d, mu)
         pinds = poly_inds(d, mu, inds)
 
-        new{T,Tmu}(d, mu, a, b, inds, pinds)
+        new{T,Tmu,d}(mu, a, b, inds, pinds)
     end
 end
 
-function SmolyakParams(d::Int, mu::Tmu, a::Vector{T}=fill(-1.0, d),
-                       b::Vector{T}=fill(1.0, d)) where {T,Tmu}
-    SmolyakParams{T,Tmu}(d, mu, a, b)
+function SmolyakParams(
+        ::Union{Val{d},Type{Val{d}}}, mu::Tmu, a::Vector{T}=fill(-1.0, d),
+        b::Vector{T}=fill(1.0, d)
+    ) where {T,Tmu,d}
+    SmolyakParams{T,Tmu,d}(mu, a, b)
 end
 
 # add methods to helper routines from other files
 smol_inds(sp::SmolyakParams) = sp.inds
 
-function poly_inds(sp::SmolyakParams, inds::Vector{Vector{Int}}=sp.inds)
-    poly_inds(sp.d, sp.mu, inds)
+function poly_inds(
+        sp::SmolyakParams{T,Tmu,d}, inds::Vector{Vector{Int}}=sp.inds
+    ) where {T,Tmu,d}
+    poly_inds(d, sp.mu, inds)
 end
 
-function build_grid(sp::SmolyakParams, inds::Vector{Vector{Int}}=sp.inds)
-    build_grid(sp.d, sp.mu, inds)
+function build_grid(
+        sp::SmolyakParams{T,Tmu,d}, inds::Vector{Vector{Int}}=sp.inds
+    ) where {T,Tmu,d}
+    build_grid(d, sp.mu, inds)
 end
 
-function build_B!(out::AbstractMatrix{T}, sp::SmolyakParams,
-                  pts::Matrix{Float64}, b_inds::Matrix{Int64}=sp.pinds) where T
-    build_B!(out, sp.d, sp.mu, pts, b_inds)
+function build_B!(
+        out::AbstractMatrix{T}, sp::SmolyakParams{Tp,Tmu,d},
+        pts::Matrix{Float64}, b_inds::Matrix{Int64}=sp.pinds
+    ) where {T,Tp,Tmu,d}
+    build_B!(out, d, sp.mu, pts, b_inds)
 end
 
 function build_B(sp::SmolyakParams, pts::Matrix{Float64},
@@ -98,22 +105,22 @@ cube2dom(pts::AbstractMatrix, sp::SmolyakParams) = cube2dom(pts, sp.a, sp.b)
 # BasisParams
 family(::Type{T}) where {T<:SmolyakParams} = Smolyak
 family_name(::Type{T}) where {T<:SmolyakParams} = "Smolyak"
-Base.eltype(::Type{SmolyakParams{T1,T2}}) where {T1,T2} = T1
+Base.eltype(::Type{SmolyakParams{T,Tmu,d}}) where {T,Tmu,d} = T
 
 # methods that only make sense for instances
 Base.min(p::SmolyakParams) = p.a
 Base.max(p::SmolyakParams) = p.b
-Base.ndims(sp::SmolyakParams) = sp.d
+Base.ndims(::Union{SmolyakParams{T,Tmu,d},Type{SmolyakParams{T,Tmu,d}}}) where {T,Tmu,d} = d
 
-function Base.show(io::IO, p::SmolyakParams)
-    m = string("Smolyak interpolation parameters in $(p.d) dimensions",
+function Base.show(io::IO, p::SmolyakParams{T,Tmu,d}) where {T,Tmu,d}
+    m = string("Smolyak interpolation parameters in $(d) dimensions",
                " from $(p.a) × $(p.b)")
     print(io, m)
 end
 
 # TODO: fix this
-function Base.length{T,Ti<:Integer}(sp::SmolyakParams{T,Ti})::Int
-    d, mu = sp.d, sp.mu
+function Base.length(sp::SmolyakParams{T,Tmu,d})::Int where {T,Tmu,d}
+    mu = sp.mu
     mu == 1 ? 2d - 1 :
     mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ) :
     mu == 3 ? Int(1 + 8d + 12d*(d-1)/2 + 8d*(d-1)*(d-2)/6) :
@@ -130,6 +137,15 @@ function evalbase(sp::SmolyakParams, x::AbstractVector, order=0)
 end
 
 function evalbase(sp::SmolyakParams, x::AbstractArray, order=0)
+    for _o in order
+        if _o != 0
+        m = string(
+            "Derivatives for Smolyak are not implemented yet...",
+            "\nPlease open an issue on GitHub if you would like use this feature"
+        )
+        error(m)
+        end
+    end
     cube_pts = dom2cube(x, sp)
     build_B(sp, cube_pts, sp.pinds)
 end

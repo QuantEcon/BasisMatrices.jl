@@ -101,7 +101,7 @@
 
         # test that the nodes from basis 3 are the same as corresponding nodes
         # from 3d basis and have correct length
-        @test n3 == linspace(-4, 2, 11)
+        @test all(n3 .== linspace(-4, 2, 11))
         @test length(n3) == n[3]
 
         # verify that the nodes from combined 3d basis is correct size

@@ -77,6 +77,11 @@ function cheby2n!(out::AbstractArray{T}, x::AbstractArray{T,N},
     if size(out) != tuple(size(x)..., n+1)
         error("out must have dimensions $(tuple(size(x)..., n+1))")
     end
+    
+    if n == 0
+        out .= one(T)
+        return out
+    end
 
     R = CartesianRange(size(x))
     # fill first element with ones

@@ -172,6 +172,11 @@ function evalbasex!(out::AbstractMatrix, z::AbstractVector{T},
     if size(z) != size(x)
         throw(DimensionMismatch("z must be same size as x"))
     end
+    
+    if p.n == 1
+        out .= 1.0
+        return out
+    end
 
     # Note: for julia 0.6+ we can do z .= _unscale.(p, x)
     z .= _unscale.([p], x)

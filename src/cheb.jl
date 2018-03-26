@@ -121,7 +121,7 @@ function evalbase(p::ChebParams, x::AbstractArray=nodes(p, 1), order::Int=0, nod
 
     if order != 0
         D = derivative_op(p, x, order)[1]
-        B = bas[:, 1:n-order]*D[abs(order)]
+        B = view(bas, :, 1:n-order)*D[abs(order)]
     else
         B = bas
     end
@@ -148,13 +148,13 @@ function evalbase(p::ChebParams, x::AbstractArray, order::AbstractVector{Int}, n
     if maxorder > 0 D = derivative_op(p, x, maxorder)[1] end
     if minorder < 0 I = derivative_op(p, x, minorder)[1] end
 
-    for ii=1:length(order)
+    for ii in 1:length(order)
         if order[ii] == 0
             B[ii] = bas[:, 1:n]
         elseif order[ii] > 0
-            B[ii] = bas[:, 1:n-order[ii]] * D[order[ii]]
+            B[ii] = view(bas, :, 1:n-order[ii]) * D[order[ii]]
         else
-            B[ii] = bas[:, 1:n-order[ii]] * I[-order[ii]]
+            B[ii] = view(bas, :, 1:n-order[ii]) * I[-order[ii]]
         end
     end
 

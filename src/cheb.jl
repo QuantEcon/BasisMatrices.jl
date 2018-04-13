@@ -196,8 +196,5 @@ function evalbasex!(out::AbstractMatrix, p::ChebParams, x::AbstractArray)
 end
 
 function evalbasex(p::ChebParams, x::AbstractArray)
-    m = size(x, 1)
-    n = p.n
-    bas = Array{basis_eltype(p, x)}(m, n)
-    evalbasex!(bas, p, x)
+    evalbasex!(Array{basis_eltype(p, x)}(size(x, 1), p.n), p, x)
 end

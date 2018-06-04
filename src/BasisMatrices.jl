@@ -26,7 +26,7 @@ using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 
 using Compat
 using Combinatorics: with_replacement_combinations
-using IterTools: product
+using Base.Iterators: product
 
 # types
 export BasisFamily, Cheb, Lin, Spline, Basis, Smolyak,

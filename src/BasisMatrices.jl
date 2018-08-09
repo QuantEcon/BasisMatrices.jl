@@ -1,4 +1,4 @@
-__precompile__()
+# __precompile__()
 
 module BasisMatrices
 
@@ -63,6 +63,7 @@ include("lin.jl")
 include("spline.jl")
 include("complete.jl")
 include("smolyak.jl")
+include("hierarchical.jl")
 
 evalbase(p::BasisParams, x::Number, args...) = evalbase(p, [x], args...)
 

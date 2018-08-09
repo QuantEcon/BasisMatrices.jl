@@ -168,11 +168,11 @@ end
 #- Construction Utilities -#
 ## ---------------------- ##
 
-doc"""
+"""
     smol_inds(d::Int, mu::Int)
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu$.
+Finds all of the indices that satisfy the requirement that ``d \leq \sum_{i=1}^d
+\leq d + \mu``.
 """
 function smol_inds(d::Int, mu::Int)
 
@@ -201,8 +201,8 @@ end
 doc"""
     smol_inds(d::Int, mu::AbstractVector{Int})
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu_i$.
+Finds all of the indices that satisfy the requirement that ``d \leq \sum_{i=1}^d
+\leq d + \mu_i``.
 
 This is the anisotropic version of the method that allows mu to vary for each
 dimension

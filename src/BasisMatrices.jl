@@ -54,7 +54,11 @@ include("spline_sparse.jl")
 
 # BasisParams interface
 Base.issparse(::Type{T}) where {T<:BasisParams} = false
-Base.ndims(::BasisParams) = 1
+# all params subtypes have one dim, except smolyak.
+# That method is overloaded in smolyak.jl
+Base.ndims(::Union{TP,Type{TP}}) where {TP<:BasisParams} = 1
+
+
 for f in [:family, :family_name, :(Base.issparse), :(Base.eltype)]
     @eval $(f)(::T) where {T<:BasisParams} = $(f)(T)
 end
@@ -63,6 +67,7 @@ include("lin.jl")
 include("spline.jl")
 include("complete.jl")
 include("smolyak.jl")
+
 
 evalbase(p::BasisParams, x::Number, args...) = evalbase(p, [x], args...)
 
@@ -78,6 +83,8 @@ Return the eltype of the Basis matrix that would be obtained by calling
 """
 basis_eltype
 
+const __DenseParams = Union{<:ChebParams,<:SmolyakParams}
+
 # give the type of the `vals` field based on the family type parameter of the
 # corresponding basis. `Spline` and `Lin` use sparse, `Cheb` uses dense
 # a hybrid must fall back to a generic AbstractMatrix{Float64}
@@ -90,8 +97,8 @@ function bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:BasisParams,T2<:SplineS
     SplineSparse{basis_eltype(TP, x),Int}
 end
 
-bmat_type(::Type{T}, x) where {T<:ChebParams} = Matrix{basis_eltype(T, x)}
-function bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:ChebParams,T2<:SplineSparse}
+bmat_type(::Type{T}, x) where {T<:__DenseParams} = Matrix{basis_eltype(T, x)}
+function bmat_type(::Type{T2}, ::Type{TP}, x) where {TP<:__DenseParams,T2<:SplineSparse}
     bmat_type(TP, x)
 end
 

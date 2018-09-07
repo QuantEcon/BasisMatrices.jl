@@ -19,7 +19,7 @@ function ckronx(b::AbstractMatrix{TM}, c::Array,
 
     z = c'  # 32
     mm = 1  # 33
-    for i=1:d
+    for i in 1:d
         m = Int(length(z) / n[i])  # 35
         z = reshape(z, m, n[i])  # 36
         z = b[ind[i]] * z'  # 37
@@ -371,8 +371,10 @@ end
 # cdprodx.m -- DONE
 cdprodx(b::Matrix{T}, c, ind=1:prod(size(b))) where {T<:Number} = b*c  # 39
 
-function cdprodx(b::AbstractArray{T}, c::StridedVecOrMat,
-ind::AbstractArray{Int}=1:prod(size(b))) where T<:AbstractMatrix
+function cdprodx(
+        b::AbstractArray{T}, c::StridedVecOrMat,
+        ind::AbstractArray{Int}=1:prod(size(b))
+    ) where {T<:AbstractMatrix}
     _check_cdprodx(b, c, ind)
     rk = RowKron(b[ind]...)
     rk*c
@@ -567,7 +569,7 @@ end
 
 function _check_cdprodx(b::Array, c, ind::AbstractArray{Int})
     _ind_min, _ind_max = extrema(ind)
-    @assert _ind_min > 0 && _ind_max <= length(b) "ind not conformable"
+    @assert (_ind_min > 0 && _ind_max <= length(b)) "ind not conformable"
 end
 
 function _nnz_per_row(A::Matrix{T}) where T

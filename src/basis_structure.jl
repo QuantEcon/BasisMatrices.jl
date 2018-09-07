@@ -1,6 +1,38 @@
-# ------------------- #
+# ------------ #
+# BMOrder Type #
+# ------------ #
+
+struct BMOrder
+    dims::Vector{Int}
+    order::Matrix{Int}
+end
+
+function ==(bmo1::BMOrder, bmo2::BMOrder)
+    bmo1.order == bmo2.order && bmo1.dims == bmo2.dims
+end
+
+function Base.convert(::Type{BMOrder}, order::Matrix{Int})
+    BMOrder(ones(size(order, 2)), order)
+end
+
+function _dims_to_colspans(dims::Vector{Int})
+    # column ranges for each entry in `bm.vals`
+    cols = Array{typeof(1:2)}(length(dims))
+    cols[1] = 1:dims[1]
+    for i in 2:length(cols)
+        start = last(cols[i-1]+1)
+        cols[i] = (start):(start-1+dims[i])
+    end
+    cols
+end
+
+_dims_to_colspans(bmo::BMOrder) = _dims_to_colspans(bmo.dims)
+
+Base.size(bmo::BMOrder, i::Int) = size(bmo.order, i)
+
+# ---------------- #
 # BasisMatrix Type #
-# ------------------- #
+# ---------------- #
 
 abstract type AbstractBasisMatrixRep end
 const ABSR = AbstractBasisMatrixRep
@@ -10,7 +42,7 @@ struct Direct <: ABSR end
 struct Expanded <: ABSR end
 
 mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
-    order::Matrix{Int}
+    order::BMOrder
     vals::Matrix{TM}
 end
 
@@ -72,20 +104,6 @@ end
     error("Basis is $N dimensional, need one Vector per dimension")
 end
 
-# common checks for all convert methods
-function check_convert(bs::BasisMatrix, order::Matrix)
-    d = ndims(bs)
-    numbas, d1 = size(order)
-
-    d1 != d && error("ORDER incompatible with basis functions")  # 35-37
-
-    # 39-41
-    if any(minimum(order, 1) .< bs.order)
-        error("Order of derivative operators exceeds basis")
-    end
-    return d, numbas, d1
-end
-
 """
 Do common transformations to all constructor of `BasisMatrix`
 
@@ -128,47 +146,72 @@ function check_basis_structure(N::Int, x, order)
     return m, order, minorder, numbases, x
 end
 
+function _unique_rows(mat::AbstractMatrix{T}) where {T}
+    out = Vector{T}[]
+    for row in 1:size(mat, 1)
+        if mat[row, :] in out
+            continue
+        end
+        push!(out, mat[row, :])
+    end
+
+    # sort so we can leverage that fact in _extract_inds later
+    # TODO: maybe consider this later...
+    # sort!(collect(out), order=Base.Order.Lexicographic)
+    out
+end
 
 # --------------- #
 # convert methods #
 # --------------- #
 
-# no-op. Don't worry about the order argument.
-Base.convert(::Type{T}, bs::BasisMatrix{T}, order=bs.order) where {T<:ABSR} = bs
+function Base.convert(
+        ::Type{T}, bs::BasisMatrix{T,TM}, _order=fill(0, 1, size(bs.order, 2))
+    ) where {T,TM}
+    order = _check_order(size(bs.order.order, 2), _order)
 
-# funbconv from direct to expanded
-function Base.convert(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
-                  order=fill(0, 1, size(bs.order, 2))) where TM
-    d, numbas, d1 = check_convert(bs, order)
+    # unflip the inds because I don't want to do kroneckers, I just want to
+    # extract up the basis matrices as they are
+    inds = flipdim(_extract_inds(bs, order), 2)
 
-    vals = Array{TM}(numbas, 1)
+    nrow = size(order, 1)
+    ncol = size(bs.vals, 2)
 
-    for i=1:numbas
-        vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 63
-        for j=d-1:-1:1
-            vals[i] = row_kron(vals[i],
-                               bs.vals[order[i, j] - bs.order[j]+1, j])  #65
+    vals = Array{TM}(nrow, ncol)
+    for row in 1:nrow
+        for col in 1:ncol
+            vals[row, col] = deepcopy(bs.vals[inds[row, col]])
         end
     end
+
+    bm_order = BMOrder(bs.order.dims, order)
+    BasisMatrix{T,TM}(order, vals)
+end
+
+function _to_expanded(bs::BasisMatrix{T,TM}, _order, reducer::Function) where {T,TM}
+    order = _check_order(size(bs.order.order, 2), _order)
+    inds = _extract_inds(bs, order)
+
+    nrow = size(inds, 1)
+    vals = Array{TM}(nrow, 1)
+
+    for row in 1:nrow
+        vals[row] = reduce(reducer, bs.vals[inds[row, :]])
+    end
+
+    bm_order = BMOrder(bs.order.dims, order)
     BasisMatrix{Expanded,TM}(order, vals)
 end
 
+
+# funbconv from direct to expanded
+function Base.convert(::Type{Expanded}, bs::BasisMatrix{Direct}, order=0)
+    _to_expanded(bs, order, row_kron)
+end
+
 # funbconv from tensor to expanded
-function Base.convert(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
-                  order=fill(0, 1, size(bs.order, 2))) where TM
-    d, numbas, d1 = check_convert(bs, order)
-
-    vals = Array{TM}(numbas, 1)
-
-    for i=1:numbas  # 54
-        vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 55
-        for j=d-1:-1:1  # 56
-            # 57
-            vals[i] = kron(vals[i], bs.vals[order[i, j] - bs.order[j]+1, j])
-        end
-    end
-
-    BasisMatrix{Expanded,TM}(order, vals)
+function Base.convert(::Type{Expanded}, bs::BasisMatrix{Tensor}, order=0)
+    _to_expanded(bs, order, kron)
 end
 
 # funbconv from tensor to direct
@@ -176,30 +219,29 @@ end
 #       plan on doing it much, this will do for now. The basic point is that
 #       we need to expand the rows of each element of `vals` so that all of
 #       them have prod([size(v, 1) for v in bs.vals])) rows.
-function Base.convert(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
-                      order=fill(0, 1, size(bs.order, 2))) where TM
-    d, numbas, d1 = check_convert(bs, order)
-    vals = Array{TM}(numbas, d)
-    raw_ind = Array{Vector{Int}}(d)
+function Base.convert(
+        ::Type{Direct}, bs::BasisMatrix{Tensor,TM},
+        _order=fill(0, 1, size(bs.order, 2))
+    ) where TM
+    order = _check_order(size(bs.order.order, 2), _order)
+    numbas = size(order, 1)
 
-    for j=1:d
-        for i=1:size(bs.vals, 1)
-            if !(isempty(bs.vals[i, j]))  # 84
-                raw_ind[j] = collect(1:size(bs.vals[i, j], 1))  # 85
-                break
-            end
+    # unflip the inds because I don't want to do kroneckers, I just want to
+    # expand basis matrices in place
+    inds = flipdim(_extract_inds(bs, order), 2)
+
+    N = size(bs.vals, 2)
+    vals = Array{TM}(size(inds))
+
+    for row in 1:size(inds, 1)
+        expansion_inds = gridmake(([size(x, 1) for x in bs.vals[inds[row, :]]]...))
+        for col in 1:N
+            vals[row, col] = bs.vals[row, col][expansion_inds[:, col], :]
         end
     end
 
-    ind = gridmake(raw_ind...)  # 90
-
-    for j=1:d, i=1:numbas
-        if !(isempty(bs.vals[i, j]))  # 93
-            vals[i, j] = bs.vals[i, j][ind[:, j], :]  # 94
-        end
-    end
-
-    BasisMatrix{Direct,TM}(order, vals)
+    bm_order = BMOrder(bs.order.dims, order)
+    BasisMatrix{Direct,TM}(bm_order, vals)
 end
 
 # ------------ #
@@ -208,71 +250,83 @@ end
 
 # method to construct BasisMatrix in direct or expanded form based on
 # a matrix of `x` values  -- funbasex
-function BasisMatrix(::Type{T2}, basis::Basis{N,BF}, ::Direct,
-                     x::AbstractArray=nodes(basis)[1], order=0) where {N,BF,T2}
-    m, order, minorder, numbases, x = check_basis_structure(N, x, order)
-    # 76-77
-    out_order = minorder
-    out_format = Direct()
+function BasisMatrix(
+        ::Type{T2}, basis::Basis{N,BF}, ::Direct,
+        _x::AbstractArray=nodes(basis)[1], _order=0
+    ) where {N,BF,T2}
+    m, order, minorder, numbases, x = check_basis_structure(N, _x, _order)
+    Np = length(basis.params)
+
     val_type = bmat_type(T2, basis, x)
-    vals = Array{val_type}(maximum(numbases), N)
+    vals = Array{val_type}(maximum(numbases), Np)
 
-    # now do direct form, will convert to expanded later if needed
-    for j=1:N
-        # 126-130
-        if (m > 1)
-            orderj = unique(order[:, j])
-        else
-            orderj = order[1, j]
-        end
+    order_dims = collect(ndims.(basis.params))
+    colspans = _dims_to_colspans(order_dims)
+    order_vals = fill(typemax(Int), size(vals, 1), N)
 
-        #131-135
-        if length(orderj) == 1
-            vals[1, j] = evalbase(T2, basis.params[j], x[:, j], orderj[1])
-        else
-            vals[orderj-minorder[j]+1, j] =
-                evalbase(T2, basis.params[j], x[:, j], orderj)
+    for (i_params, params) in enumerate(basis.params)
+        cols = colspans[i_params]
+        orders_p = _unique_rows(order[:, cols])
+
+        if length(cols) == 1
+            _orders_1d = vcat(orders_p...)::Vector{Int}
+            rows = 1:length(_orders_1d)
+            vals[rows, i_params] = evalbase(T2, params, x[:, cols[1]], _orders_1d)
+            order_vals[rows, cols[1]] = _orders_1d
+        else  # multi-dim params
+            for (i, ord) in enumerate(orders_p)
+                vals[i, i_params] = evalbase(T2, params, x[:, cols], ord)
+                order_vals[i, cols] = ord
+            end
         end
     end
 
-    # construct Direct Format
-    BasisMatrix{Direct,val_type}(out_order, vals)
+    bm_order = BMOrder(order_dims, order_vals)
+    return BasisMatrix{Direct,val_type}(bm_order, vals)
 end
 
 function BasisMatrix(::Type{T2}, basis::Basis, ::Expanded,
                      x::AbstractArray=nodes(basis)[1], order=0) where T2  # funbasex
     # create direct form, then convert to expanded
     bsd = BasisMatrix(T2, basis, Direct(), x, order)
-    convert(Expanded, bsd, bsd.order)
+    convert(Expanded, bsd, bsd.order.order)
 end
 
-function BasisMatrix(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
-                     x::TensorX=nodes(basis)[2], order=0) where {N,BT,T2}
+function BasisMatrix(
+        ::Type{T2}, basis::Basis{N,BT}, ::Tensor,
+        _x::TensorX=nodes(basis)[2], _order=0
+    ) where {N,BT,T2}
 
-    m, order, minorder, numbases, x = check_basis_structure(N, x, order)
-    out_order = minorder
-    out_format = Tensor()
-    val_type = bmat_type(T2, basis, x[1])  # TODO: reduce(promot_type, eltype.(x))
-    vals = Array{val_type}(maximum(numbases), N)
+    m, order, minorder, numbases, x = check_basis_structure(N, _x, _order)
+    Np = length(basis.params)
 
-    # construct tensor base
-    for j in 1:N
-        # 113-117
-        if (m > 1)
-            orderj = unique(order[:, j])
-        else
-            orderj = order[1, j]
+    val_type = bmat_type(T2, basis, x[1])
+    vals = Array{val_type}(maximum(numbases), Np)
+
+    order_dims = collect(ndims.(basis.params))
+    colspans = _dims_to_colspans(order_dims)
+    order_vals = fill(typemax(Int), size(vals, 1), N)
+
+    for (i_params, params) in enumerate(basis.params)
+        cols = colspans[i_params]
+        orders_p = _unique_rows(order[:, cols])
+
+        if length(cols) == 1
+            _orders_1d = vcat(orders_p...)::Vector{Int}
+            rows = 1:length(_orders_1d)
+            vals[rows, i_params] = evalbase(T2, params, x[i_params], _orders_1d)
+            order_vals[rows, cols[1]] = _orders_1d
+        else  # multi-dim params
+            for (i, ord) in enumerate(orders_p)
+                vals[i, i_params] = evalbase(T2, params, x[i_params], ord)
+                order_vals[i, cols] = ord
+            end
         end
 
-        #118-122
-        if length(orderj) == 1
-            vals[1, j] = evalbase(T2, basis.params[j], x[j], orderj[1])
-        else
-            vals[orderj-minorder[j]+1, j] = evalbase(T2, basis.params[j], x[j], orderj)
-        end
     end
 
-    BasisMatrix{Tensor,val_type}(out_order, vals)
+    bm_order = BMOrder(order_dims, order_vals)
+    return BasisMatrix{Tensor,val_type}(bm_order, vals)
 end
 
 # When the user doesn't supply a ABSR, we pick one for them.

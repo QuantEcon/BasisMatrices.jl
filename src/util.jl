@@ -279,7 +279,7 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
     end
 
     @eval begin
-    function Base.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
+    function LinearAlgebra.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
         $(checks)
 
         _is_sparse = map(x -> isa(x, SparseMatrixCSC), rk.B)
@@ -356,13 +356,13 @@ function *(rk::RowKron, c::StridedMatrix)
     out
 end
 
-function Base.At_mul_B(rk::RowKron, c::StridedVector)
+function LinearAlgebra.At_mul_B(rk::RowKron, c::StridedVector)
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2))
     At_mul_B!(out, rk, c)
     out
 end
 
-function Base.At_mul_B(rk::RowKron, c::StridedMatrix)
+function LinearAlgebra.At_mul_B(rk::RowKron, c::StridedMatrix)
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2), size(c, 2))
     At_mul_B!(out, rk, c)
     out

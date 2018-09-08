@@ -113,7 +113,7 @@ function s_n(n::Int)
     pts
 end
 
-doc"""
+@doc doc"""
 Finds all of the unidimensional disjoint sets of Chebychev extrema that are
 used to construct the grid.  It improves on past algorithms by noting  that
 $A_{n} = S_{n}$ [evens] except for $A_1= \{0\}$  and $A_2 = \{-1, 1\}$.

@@ -1,5 +1,3 @@
-__precompile__()
-
 module BasisMatrices
 
 # TODO: still need to write fund, minterp
@@ -41,6 +39,9 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
 
 #re-exports
 export gridmake, gridmake!, ckron
+
+using SparseArrays
+using LinearAlgebra
 
 abstract type BasisFamily end
 abstract type BasisParams end

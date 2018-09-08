@@ -145,7 +145,7 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     end
 end
 
-function Base.A_mul_B!(out::AbstractVector{Tout},
+function LinearAlgebra.A_mul_B!(out::AbstractVector{Tout},
                        s::SplineSparse{T,I,N,L},
                        v::AbstractVector) where {T,I,N,L,Tout}
     @inbounds for row in eachindex(out)
@@ -234,7 +234,7 @@ shape_c_expr(::Type{T}) where {T<:AbstractMatrix} = :(reshape(_c, reverse(_ncol.
 const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
 
 # if we have all `SplineSparse`s we can special case out = rk*c
-@generated function Base.A_mul_B!(out::StridedVecOrMat,
+@generated function LinearAlgebra.A_mul_B!(out::StridedVecOrMat,
                                   rk::RKSS,
                                   _c::StridedVecOrMat)
     N = length(rk.parameters[1].parameters)

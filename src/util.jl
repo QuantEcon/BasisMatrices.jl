@@ -202,7 +202,7 @@ Base.length(rk::RowKron) = length(rk.B)
 @generated Base.eltype(::RowKron{T}) where {T} =
     reduce(promote_type, map(eltype, T.parameters))
 
-Base.issparse(rk::RowKron) = map(issparse, rk.B)
+SparseArrays.issparse(rk::RowKron) = map(issparse, rk.B)
 
 function Base.size(rk::RowKron, i::Int)
     if i == 1

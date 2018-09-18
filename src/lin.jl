@@ -40,7 +40,7 @@ LinParams(n::Int, a::Real, b::Real) =
 # BasisParams
 family(::Type{T}) where {T<:LinParams} = Lin
 family_name(::Type{T}) where {T<:LinParams} = "Lin"
-Base.issparse(::Type{T}) where {T<:LinParams} = true
+SparseArrays.issparse(::Type{T}) where {T<:LinParams} = true
 function Base.eltype(::Type{LinParams{T}}) where T
     elT = eltype(T)
     elT <: Integer ? Float64 : elT

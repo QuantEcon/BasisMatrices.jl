@@ -44,7 +44,7 @@ SplineParams(n::Int, a::Real, b::Real, k::Int=3) =
 # BasisParams
 family(::Type{T}) where {T<:SplineParams} = Spline
 family_name(::Type{T}) where {T<:SplineParams} = "Spline"
-Base.issparse(::Type{T}) where {T<:SplineParams} = true
+SparseArrays.issparse(::Type{T}) where {T<:SplineParams} = true
 function Base.eltype(::Type{SplineParams{T}}) where T
     elT = eltype(T)
     elT <: Integer ? Float64 : elT

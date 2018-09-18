@@ -54,9 +54,9 @@ include("spline_sparse.jl")
 # include the families
 
 # BasisParams interface
-Base.issparse(::Type{T}) where {T<:BasisParams} = false
+SparseArrays.issparse(::Type{T}) where {T<:BasisParams} = false
 Base.ndims(::BasisParams) = 1
-for f in [:family, :family_name, :(Base.issparse), :(Base.eltype)]
+for f in [:family, :family_name, :(SparseArrays.issparse), :(Base.eltype)]
     @eval $(f)(::T) where {T<:BasisParams} = $(f)(T)
 end
 include("cheb.jl")

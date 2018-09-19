@@ -22,7 +22,6 @@ using Base.Cartesian
 
 using QuantEcon: gridmake, gridmake!, ckron, fix, fix!
 
-using Compat
 using Combinatorics: with_replacement_combinations
 using Base.Iterators: product
 

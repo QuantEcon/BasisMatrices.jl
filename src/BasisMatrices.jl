@@ -40,8 +40,8 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
 #re-exports
 export gridmake, gridmake!, ckron
 
-using SparseArrays
-using LinearAlgebra
+# stdlib
+using SparseArrays, LinearAlgebra, Statistics
 
 abstract type BasisFamily end
 abstract type BasisParams end

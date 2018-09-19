@@ -43,8 +43,8 @@
 
         @test begin
             my_nodes = @inferred(nodes(p))
-            min(p) == vec(minimum(my_nodes, 1))
-            max(p) == vec(maximum(my_nodes, 1))
+            min(p) == vec(minimum(my_nodes, dims=1))
+            max(p) == vec(maximum(my_nodes, dims=1))
         end
     end
 
@@ -56,27 +56,6 @@
             for x in p; len += 1; end
             @test len == factorial(i)
         end
-
-
-        # test elements...
-        p = BasisMatrices.Permuter([1, 2])
-        @test 2 == @inferred start(p)
-        s = start(p)
-        @test false == @inferred done(p, s)
-
-        @test begin
-            el, s = @inferred next(p, s)
-            el == [2, 1]
-        end
-        @test s == 2
-        @test false == done(p, s)
-
-        @test begin
-            el, s = @inferred next(p, s)
-            el == [1, 2]
-        end
-        @test s == 0
-        @test done(p, s)
 
         # test elements with longer set
         p = BasisMatrices.Permuter([1, 2 ,3])
@@ -177,7 +156,7 @@
         in ChebParams
         =#
 
-        x = 2 .* (rand(10) - 0.5)
+        x = 2 .* (rand(10) .- 0.5)
         for n in 2:20
             p = BasisMatrices.ChebParams(n+1, -1.0, 1.0)
             want = BasisMatrices.evalbase(p, x)
@@ -390,7 +369,7 @@
                         sum_el = sum(el)
                         @test sum_el >= d
                         @test sum_el <= d + maximum(mu)
-                        @test all(el .<= mu + 1)
+                        @test all(el .<= mu .+ 1)
                     end
                 end
             end
@@ -424,7 +403,7 @@
 
     @testset "build_B" begin
         # TODO: come up with better tests
-        x = linspace(-1, 1, 5)
+        x = range(-1, stop=1, length=5)
         for d in 2:5
             for mu in 1:3
                 X = BasisMatrices.cartprod([x for foobar in 1:d])
@@ -433,7 +412,7 @@
                 @test size(B) == (size(X, 1), size(b_inds, 1))
 
                 # test mutating version
-                out = zeros(B)
+                out = similar(B)
                 BasisMatrices.build_B!(out, d, mu, X, b_inds)
                 @test out ≈ B
             end
@@ -441,7 +420,7 @@
     end
 
     @testset "dom2cube and cube2dom" begin
-        pts = reshape(linspace(-1, 1, 10), 10, 1)
+        pts = reshape(range(-1, stop=1, length=10), 10, 1)
         lb = [-3.0]
         ub = [4.0]
         dom = @inferred BasisMatrices.cube2dom(pts, lb, ub)
@@ -471,13 +450,13 @@
         for p in (p1, p2, p3, p4, p5)
             # nodes
             X = @inferred BasisMatrices.nodes(p)
-            @test minimum(X, 1) ≈ p.a'
-            @test maximum(X, 1) ≈ p.b'
+            @test minimum(X, dims=1) ≈ p.a'
+            @test maximum(X, dims=1) ≈ p.b'
 
             # dom2cube
             cube = @inferred BasisMatrices.dom2cube(X, p)
             @test cube ≈ BasisMatrices.build_grid(p.d, p.mu)
-            out = zeros(cube)
+            out = similar(cube)
             BasisMatrices.dom2cube!(out, X, p)
             @test cube ≈ out
 
@@ -494,7 +473,7 @@
             # build_B
             want = BasisMatrices.build_B(p.d, p.mu, cube, p.pinds)
             @test want ≈ @inferred BasisMatrices.build_B(p, cube)
-            out = zeros(want)
+            out = similar(want)
             BasisMatrices.build_B!(out, p, cube)
             @test want ≈ out
 

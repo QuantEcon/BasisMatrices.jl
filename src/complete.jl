@@ -91,7 +91,7 @@ end
 
 function complete_polynomial(z::AbstractVector{T}, d::Degree{N}) where {T,N}
     nvar = length(z)
-    out = Array{T}(n_complete(nvar, d))
+    out = Array{T}(undef, n_complete(nvar, d))
     complete_polynomial!(out, z, d)
     out
 end
@@ -139,7 +139,7 @@ end
 
 function complete_polynomial(z::AbstractMatrix{T}, d::Degree{N}) where {T,N}
     nobs, nvar = size(z)
-    out = Array{T}(nobs, n_complete(nvar, d))
+    out = Array{T}(undef, nobs, n_complete(nvar, d))
     complete_polynomial!(out, z, d)
     out
 end
@@ -209,7 +209,7 @@ function complete_polynomial(
         z::AbstractVector{T}, d::Degree{N}, der::Derivative{D}
     ) where {N,D,T}
     nvar = length(z)
-    out = Array{T}(n_complete(nvar, d))
+    out = Array{T}(undef, n_complete(nvar, d))
     complete_polynomial!(out, z, d, der)
 end
 
@@ -263,7 +263,7 @@ function complete_polynomial(
         z::AbstractMatrix{T}, d::Degree{N}, der::Derivative{D}
     ) where {N,D,T}
     nobs, nvar = size(z)
-    out = Array{T}(nobs, n_complete(nvar, d))
+    out = Array{T}(undef, nobs, n_complete(nvar, d))
     complete_polynomial!(out, z, d, der)
 end
 

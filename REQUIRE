@@ -1,5 +1,3 @@
-julia 0.6
+julia 0.7
 QuantEcon
-Compat 0.17
-IterTools
 Combinatorics

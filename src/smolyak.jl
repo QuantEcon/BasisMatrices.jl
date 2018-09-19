@@ -78,7 +78,7 @@ end
 
 function build_B(sp::SmolyakParams, pts::Matrix{Float64},
                  b_inds::Matrix{Int64}=sp.pinds)
-    build_B!(Array{Float64}(size(pts, 1), size(b_inds, 1)), sp, pts, b_inds)
+    build_B!(Array{Float64}(undef, size(pts, 1), size(b_inds, 1)), sp, pts, b_inds)
 end
 
 function dom2cube!(out::AbstractMatrix, pts::AbstractMatrix,

@@ -1,7 +1,4 @@
 @testset "Testing logic using strings" begin
-    if VERSION < v"0.6.0-dev.1833" # added in Julia PR #19548
-        Base.one(::Type{T}) where {T<:AbstractString} = ""
-    end
     z = ["x ", "y ", "z "]
 
     want_1 = ["" "x " "y " "z "]
@@ -23,7 +20,7 @@ end
     for d in 1:5
         n_comp = n_complete(size(z, 2), d)
         # Test basis matrices
-        buff_d = Array{Float64}(size(z, 1), n_comp)
+        buff_d = Array{Float64}(undef, size(z, 1), n_comp)
         out_d = complete_polynomial(z, d)
         complete_polynomial!(buff_d, z, d)
         @test size(out_d, 1) == size(z, 1)
@@ -35,15 +32,15 @@ end
         @test all(isapprox.(out_d, buff_d))
 
         # Test derivatives
-        buff_der_d = Array{Float64}(size(z, 1), n_comp)
+        buff_der_d = Array{Float64}(undef, size(z, 1), n_comp)
         out_der_d = complete_polynomial(z, d, 1)
         complete_polynomial!(buff_der_d, z, d, 1)
         @test size(out_der_d, 1) == size(z, 1)
         @test size(out_der_d, 2) == n_comp
         @test all(isapprox.(out_der_d[:, 1], the_zeros))
         @test all(isapprox.(out_der_d[:, 2], the_ones))
-        @test d ==1 ? true : all(isapprox.(out_der_d[:, 3], 2.*z[:, 1]))
-        @test d <= 2 ? true : all(isapprox.(out_der_d[:, 4], 3.*z[:, 1].*z[:, 1]))
+        @test d ==1 ? true : all(isapprox.(out_der_d[:, 3], 2 .*z[:, 1]))
+        @test d <= 2 ? true : all(isapprox.(out_der_d[:, 4], 3 .*z[:, 1].*z[:, 1]))
         @test all(isapprox.(out_der_d[:, end], the_zeros))
         @test all(isapprox.(out_der_d, buff_der_d))
 

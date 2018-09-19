@@ -36,6 +36,7 @@ function Base.iterate(p::Permuter, i=p.len)
 end
 
 function cartprod(arrs, out=Array{eltype(arrs[1])}(
+                                undef,
                                 prod([length(a) for a in arrs]),
                                 length(arrs))
                                 )
@@ -61,7 +62,7 @@ function m_i(i::Int)
 end
 
 function cheby2n(x::AbstractArray{T}, n::Int, kind::Int=1) where T<:Number
-    out = Array{T}(size(x)..., n+1)
+    out = Array{T}(undef, size(x)..., n+1)
     cheby2n!(out, x, n, kind)
 end
 
@@ -77,7 +78,7 @@ function cheby2n!(out::AbstractArray{T}, x::AbstractArray{T,N},
         error("out must have dimensions $(tuple(size(x)..., n+1))")
     end
 
-    R = CartesianRange(size(x))
+    R = CartesianIndices(size(x))
     # fill first element with ones
     @inbounds @simd for I in R
         out[I, 1] = one(T)
@@ -213,7 +214,7 @@ function smol_inds(d::Int, mu::AbstractVector{Int})
     length(mu) != d &&  error("ValueError: mu must have d elements.")
 
     mu_max = maximum(mu)
-    mup1 = mu + 1
+    mup1 = mu .+ 1
 
     p_vals = 1:(mu_max+1)
 
@@ -284,7 +285,7 @@ function build_B!(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
 end
 
 function build_B(d::Int, mu::IntSorV, pts::Matrix{Float64}, b_inds::Matrix{Int64})
-    build_B!(Array{Float64}(size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
+    build_B!(Array{Float64}(undef, size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
 end
 
 function dom2cube!(out::AbstractMatrix, pts::AbstractMatrix,
@@ -326,5 +327,5 @@ end
 for f in [:dom2cube!, :cube2dom!]
     no_bang = Symbol(string(f)[1:end-1])
     @eval $(no_bang)(pts::AbstractMatrix{T}, lb::AbstractVector, ub::AbstractVector) where {T} =
-        $(f)(Array{T}(size(pts, 1), length(lb)), pts, lb, ub)
+        $(f)(Array{T}(undef, size(pts, 1), length(lb)), pts, lb, ub)
 end

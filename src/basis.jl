@@ -5,7 +5,7 @@ end
 
 # params of same type are equal if all their fields are equal
 ==(p1::T, p2::T) where {T<:BasisParams} =
-    all(map(nm->getfield(p1, nm) == getfield(p2, nm), fieldnames(p1)))::Bool
+    all(map(nm->getfield(p1, nm) == getfield(p2, nm), fieldnames(T)))::Bool
 
 # Bases of different dimension can't be equal
 ==(::T1, ::T2) where {T1<:BasisParams,T2<:BasisParams} = false
@@ -107,7 +107,7 @@ Base.size(b::Basis{N}) where {N} = map(length, b.params)
 
 # basis are equal if all fields of the basis are equal
 ==(b1::Basis{N}, b2::Basis{N}) where {N} =
-    all(map(nm->getfield(b1, nm) == getfield(b2, nm), fieldnames(b1)))::Bool
+    all(map(nm->getfield(b1, nm) == getfield(b2, nm), fieldnames(Basis)))::Bool
 
 function nodes(b::Basis{1})
     x = nodes(b.params[1])
@@ -135,5 +135,5 @@ end
     return :($out)
 end
 
-bmat_type(b::Basis) = bmat_type(Void, b)
-bmat_type(b::Basis, x) = bmat_type(Void, b, x)
+bmat_type(b::Basis) = bmat_type(Nothing, b)
+bmat_type(b::Basis, x) = bmat_type(Nothing, b, x)

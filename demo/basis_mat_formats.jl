@@ -103,7 +103,7 @@ rows of the matrix argument.
 # tensor form such that elements are repeated in column major order (i.e.
 # the first column varies fastest)
 Φd1 = (
-    repmat(bmt.vals[1], length(y)),
+    repeat(bmt.vals[1], length(y)),
     hcat([repeat(bmt.vals[2][:, i], inner=length(x)) for i in 1:length(y)]...)
     )
 

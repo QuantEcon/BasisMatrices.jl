@@ -23,7 +23,7 @@
 
     	#test derivative of basis indirectly, by fitting exponential function
     	bas2 = Basis(LinParams([0, 1.0], 1000000))
-    	coeffs = funfitf(bas2, exp)
+    	coeffs = funfitf(bas2, x -> exp.(x))
     	points = rand(10000)
 
     	d1 = evalbase(SparseMatrixCSC, bas2.params[1], points, 1) * coeffs

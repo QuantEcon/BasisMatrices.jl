@@ -6,10 +6,10 @@ nod_l = BasisMatrices.nodes(params, 3) # Lobatto nodes
 
 function manualeval(x, a, b, n)
 
-    z = 2*(x-a)/(b-a)-1
+    z = @. 2*(x-a)/(b-a)-1
     m = length(x)
 
-    bas = Array{Float64}(m, n)
+    bas = Array{Float64}(undef, m, n)
     bas[:,1:2] = [ones(m, 1) z]
 
     for i in 3:n

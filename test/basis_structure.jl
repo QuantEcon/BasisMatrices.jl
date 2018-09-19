@@ -1,9 +1,9 @@
 # Tests conversion among basis-structure representations
 
 @testset "Test Basis Structure Representations" begin
-    mb = Basis(SplineParams(linspace(-3, 3, 9), 0, 1),
+    mb = Basis(SplineParams(range(-3, stop=3, length=9), 0, 1),
                ChebParams(7, 1e-4, 10.0),
-               LinParams(linspace(-4, 2, 11), 0))
+               LinParams(range(-4, stop=2, length=11), 0))
 
     # construct evaluation points
     X, x123 = nodes(mb)
@@ -143,11 +143,11 @@
         @test BasisMatrix(mb[1], Direct, X[:,1]) == Φ_direct_1d
 
         # test extra type methods
-        @test BasisMatrix(Void, mb, Expanded, X) == Φ_expanded
-        @test BasisMatrix(Void, mb, Direct, X) == Φ_direct
-        @test BasisMatrix(Void, mb, Tensor, x123) == Φ_tensor
-        @test BasisMatrix(Void, mb[1], Expanded, X[:,1]) == Φ_expanded_1d
-        @test BasisMatrix(Void, mb[1], Direct, X[:,1]) == Φ_direct_1d
+        @test BasisMatrix(Nothing, mb, Expanded, X) == Φ_expanded
+        @test BasisMatrix(Nothing, mb, Direct, X) == Φ_direct
+        @test BasisMatrix(Nothing, mb, Tensor, x123) == Φ_tensor
+        @test BasisMatrix(Nothing, mb[1], Expanded, X[:,1]) == Φ_expanded_1d
+        @test BasisMatrix(Nothing, mb[1], Direct, X[:,1]) == Φ_direct_1d
 
         ## Test SplineSparseMethods
         @test BasisMatrix(SplineSparse, mb, Expanded, X) == Φ_expanded

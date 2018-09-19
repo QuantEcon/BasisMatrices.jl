@@ -68,7 +68,7 @@ function derivative_op(p::LinParams, x, order::Int=1)
     D = Array{SparseMatrixCSC{basis_eltype(p, x),Int}}(abs(order))
 
     for i in 1:order
-        d = 1./diff(newbreaks)
+        d = 1.0/diff(newbreaks)
         d = sparse([1:n-1; 1:n-1], [1:n-1; 2:n], [-d; d], n-1, n)
         if i > 1
             D[i] = d*D[i-1]

@@ -218,9 +218,9 @@ Base.size(rk::RowKron) = (size(rk, 1), size(rk, 2))
 
 sizes(rk::RowKron, i::Integer) = collect(map(A -> size(A, i), rk.B))
 
-for (f, op, transp) in ((:A_mul_B!, :identity, false),
-                        (:Ac_mul_B!, :ctranspose, true),
-                        (:At_mul_B!, :transpose, true))
+for (op, transp) in ((:identity, false),
+                     (:adjoint, true),
+                     (:transpose, true))
 
     # code to do type checks for input args
     checks = transp ? quote
@@ -278,8 +278,13 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
         end
     end
 
+    T = op == :identity ? :(RowKron) :
+        op == :adjoint ? :(Adjoint{T,<:RowKron}) :
+        :(Transpose{T,<:RowKron})
+
+
     @eval begin
-    function LinearAlgebra.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
+    function LinearAlgebra.mul!(out::StridedVecOrMat, rk::$(T), c::StridedVecOrMat) where T
         $(checks)
 
         _is_sparse = map(x -> isa(x, SparseMatrixCSC), rk.B)
@@ -344,27 +349,15 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
     end  # @eval begin
 end
 
-function *(rk::RowKron, c::StridedVector)
+function *(rk::Union{RowKron,Transpose{T,RowKron},Adjoint{T,RowKron}}, c::StridedVector) where T
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
-    A_mul_B!(out, rk, c)
+    mul!(out, rk, c)
     out
 end
 
-function *(rk::RowKron, c::StridedMatrix)
+function *(rk::Union{RowKron,Transpose{T,RowKron},Adjoint{T,RowKron}}, c::StridedMatrix) where T
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1), size(c, 2))
-    A_mul_B!(out, rk, c)
-    out
-end
-
-function LinearAlgebra.At_mul_B(rk::RowKron, c::StridedVector)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2))
-    At_mul_B!(out, rk, c)
-    out
-end
-
-function LinearAlgebra.At_mul_B(rk::RowKron, c::StridedMatrix)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2), size(c, 2))
-    At_mul_B!(out, rk, c)
+    mul!(out, rk, c)
     out
 end
 
@@ -608,7 +601,7 @@ function _allocate_row_kron_out(::Type{SparseMatrixCSC},
     k = _row_kron_sparse_out_nnz(A, B)
     SparseMatrixCSC(nobsa, na*nb,
         ones(Int, na*nb+1),          # colptr
-        Array{Int}(k),                # rowval
+        Array{Int}(k),               # rowval
         Array{promote_type(S,T)}(k)  # nzval
     )
 end

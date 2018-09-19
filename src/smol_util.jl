@@ -8,9 +8,8 @@ struct Permuter{T<:AbstractVector}
 end
 Permuter(a::T) where {T<:AbstractVector} = Permuter{T}(a)
 
-Base.start(p::Permuter) = p.len
-Base.done(p::Permuter, i::Int) = i == 0
-function Base.next(p::Permuter, i::Int)
+function Base.iterate(p::Permuter, i=p.len)
+    i == 0 && return nothing
     while true
         i -= 1
 
@@ -113,13 +112,13 @@ function s_n(n::Int)
     pts
 end
 
-@doc doc"""
+"""
 Finds all of the unidimensional disjoint sets of Chebychev extrema that are
 used to construct the grid.  It improves on past algorithms by noting  that
-$A_{n} = S_{n}$ [evens] except for $A_1= \{0\}$  and $A_2 = \{-1, 1\}$.
-Additionally, $A_{n} = A_{n+1}$ [odds] This prevents the calculation of these
+``A_{n} = S_{n}`` [evens] except for ``A_1= \\{0\\}``  and ``A_2 = \\{-1, 1\\}``.
+Additionally, ``A_{n} = A_{n+1}`` [odds] This prevents the calculation of these
 nodes repeatedly. Thus we only need to calculate biggest of the S_n's to build
-the sequence of $A_n$ 's
+the sequence of ``A_n`` 's
 
 See section 3.2 of the paper...
 """
@@ -142,9 +141,9 @@ end
 
 
 
-doc"""
+"""
 For each number in 1 to `n`, compute the Smolyak indices for the corresponding
-basis functions. This is the $n$ in $\phi_n$. The output is A dictionary whose
+basis functions. This is the ``n`` in ``\\phi_n``. The output is A dictionary whose
 keys are the Smolyak index `n` and values are ranges containing all basis
 polynomial subscripts for that Smolyak index
 """
@@ -168,11 +167,11 @@ end
 #- Construction Utilities -#
 ## ---------------------- ##
 
-doc"""
+"""
     smol_inds(d::Int, mu::Int)
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu$.
+Finds all of the indices that satisfy the requirement that ``d \\leq \\sum_{i=1}^d
+\\leq d + \\mu``.
 """
 function smol_inds(d::Int, mu::Int)
 
@@ -198,11 +197,11 @@ function smol_inds(d::Int, mu::Int)
     return true_inds
 end
 
-doc"""
+"""
     smol_inds(d::Int, mu::AbstractVector{Int})
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu_i$.
+Finds all of the indices that satisfy the requirement that ``d \\leq \\sum_{i=1}^d
+\\leq d + \\mu_i``.
 
 This is the anisotropic version of the method that allows mu to vary for each
 dimension

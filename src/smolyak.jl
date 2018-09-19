@@ -112,7 +112,7 @@ function Base.show(io::IO, p::SmolyakParams)
 end
 
 # TODO: fix this
-function Base.length{T,Ti<:Integer}(sp::SmolyakParams{T,Ti})::Int
+function Base.length(sp::SmolyakParams{T,<:Integer})::Int where T
     d, mu = sp.d, sp.mu
     mu == 1 ? 2d - 1 :
     mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ) :

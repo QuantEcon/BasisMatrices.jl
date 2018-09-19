@@ -34,7 +34,7 @@ end
 @inline col_ix(s::SplineSparse{T,I,N}, row, chunk) where {T,I,N} =
     N*(row-1) + chunk
 
-function Base.full(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
+function Base.Array(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     out = zeros(T, nrow, s.ncol)
 
@@ -50,7 +50,7 @@ function Base.full(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     out
 end
 
-function Base.findnz(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
+function SparseArrays.findnz(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     rows = repeat(collect(I, 1:nrow), inner=[N*L])
     cols = Array{I}(length(s.vals))
@@ -72,7 +72,7 @@ function Base.convert(::Type{SparseMatrixCSC}, s::SplineSparse)
     sparse(I, J, V, _nrows(s), s.ncol)
 end
 
-Base.sparse(s::SplineSparse) = convert(SparseMatrixCSC, s)
+SparseArrays.sparse(s::SplineSparse) = convert(SparseMatrixCSC, s)
 
 function Base.getindex(s::SplineSparse{T,I,N,L}, row::Integer, cols::Integer) where {T,I,N,L}
     for chunk in 1:N
@@ -145,7 +145,7 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     end
 end
 
-function LinearAlgebra.A_mul_B!(out::AbstractVector{Tout},
+function LinearAlgebra.mul!(out::AbstractVector{Tout},
                        s::SplineSparse{T,I,N,L},
                        v::AbstractVector) where {T,I,N,L,Tout}
     @inbounds for row in eachindex(out)
@@ -234,7 +234,7 @@ shape_c_expr(::Type{T}) where {T<:AbstractMatrix} = :(reshape(_c, reverse(_ncol.
 const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
 
 # if we have all `SplineSparse`s we can special case out = rk*c
-@generated function LinearAlgebra.A_mul_B!(out::StridedVecOrMat,
+@generated function LinearAlgebra.mul!(out::StridedVecOrMat,
                                   rk::RKSS,
                                   _c::StridedVecOrMat)
     N = length(rk.parameters[1].parameters)

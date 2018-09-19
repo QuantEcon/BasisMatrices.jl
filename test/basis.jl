@@ -3,7 +3,11 @@
     n = [9, 7, 11]
     a = [-3, 1e-4, -4]
     b = [3, 10.0, 2]
-    params = (SplineParams(linspace(-3, 3, 9), 0, 1), ChebParams(7, 1e-4, 10.0), LinParams(linspace(-4, 2, 11), 0))
+    params = (
+        SplineParams(range(-3, stop=3, length=9), 0, 1),
+        ChebParams(7, 1e-4, 10.0),
+        LinParams(range(-4, stop=2, length=11), 0)
+    )
 
     # use univariate constructors
     b1, b2, b3 = map(Basis, params)
@@ -92,7 +96,7 @@
 
         # test the nodes from basis 1 are what we expect, are the same as the
         # corresponding nodes from the 3d basis and have the correct length
-        @test n1 == collect(linspace(-3, 3, 9))
+        @test n1 == collect(range(-3, stop=3, length=9))
         @test length(n1) == n[1]
 
         # test that the nodes from basis 2 are the same as corresponding nodes
@@ -101,7 +105,7 @@
 
         # test that the nodes from basis 3 are the same as corresponding nodes
         # from 3d basis and have correct length
-        @test n3 == collect(linspace(-4, 2, 11))
+        @test n3 == collect(range(-4, stop=2, length=11))
         @test length(n3) == n[3]
 
         # verify that the nodes from combined 3d basis is correct size

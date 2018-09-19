@@ -13,7 +13,7 @@ mutable struct LinParams{T<:AbstractVector} <: BasisParams
 
         if evennum != 0
             if length(breaks) == 2
-                breaks = linspace(breaks[1], breaks[2], evennum)
+                breaks = range(breaks[1], stop=breaks[2], length=evennum)
             else
                 if length(breaks) < 2
                     error("breaks must have at least 2 elements")
@@ -33,14 +33,14 @@ LinParams(breaks::T, evennum::Int=0) where {T<:AbstractVector} = LinParams{T}(br
 
 # constructor to take a, b, n and form linspace for breaks
 LinParams(n::Int, a::Real, b::Real) =
-    LinParams(linspace(a, b, n), 0)
+    LinParams(range(a, stop=b, length=n), 0)
 
 ## BasisParams interface
 # define these methods on the type, the instance version is defined over
 # BasisParams
 family(::Type{T}) where {T<:LinParams} = Lin
 family_name(::Type{T}) where {T<:LinParams} = "Lin"
-Base.issparse(::Type{T}) where {T<:LinParams} = true
+SparseArrays.issparse(::Type{T}) where {T<:LinParams} = true
 function Base.eltype(::Type{LinParams{T}}) where T
     elT = eltype(T)
     elT <: Integer ? Float64 : elT
@@ -65,10 +65,10 @@ function derivative_op(p::LinParams, x, order::Int=1)
     newbreaks = collect(breaks)
     Tb = typeof(newbreaks)
     n = length(breaks)
-    D = Array{SparseMatrixCSC{basis_eltype(p, x),Int}}(abs(order))
+    D = Array{SparseMatrixCSC{basis_eltype(p, x),Int}}(undef, abs(order))
 
     for i in 1:order
-        d = 1./diff(newbreaks)
+        d = 1.0 ./ diff(newbreaks)
         d = sparse([1:n-1; 1:n-1], [1:n-1; 2:n], [-d; d], n-1, n)
         if i > 1
             D[i] = d*D[i-1]
@@ -85,7 +85,7 @@ function derivative_op(p::LinParams, x, order::Int=1)
                        dot([-1, 3], newbreaks[end-1:end])]/2)::Tb
         d = diff(newbreaks)'
         n = n+1
-        d = tril(repmat(d, n, 1), -1)
+        d = tril(repeat(d, n, 1), -1)
         if i<-1
             D[-i] = d*D[-i-1]
         else
@@ -98,7 +98,7 @@ function derivative_op(p::LinParams, x, order::Int=1)
         else
             temp = evalbase(LinParams(newbreaks, 0), breaks[1], 0)*D[-i]
         end
-        D[-i] = D[-i]-repmat(temp, length(newbreaks), 1)
+        D[-i] = D[-i]-repeat(temp, length(newbreaks), 1)
     end
 
     params = LinParams(newbreaks, evennum > 0 ? evennum : 0)
@@ -126,7 +126,7 @@ function _prep_evalbase(p::LinParams, x::AbstractArray)
     #   the breakpoints that are less than or equal to x,
     #   (if x=b use the index of the next to last breakpoint).
     if p.evennum != 0
-        ind = fix((x-p.breaks[1]).*((n-1)./(p.breaks[end]-p.breaks[1]))) + 1
+        ind = fix((x .- p.breaks[1]).*((n-1)./(p.breaks[end]-p.breaks[1]))) .+ 1
         clamp!(ind, 1, n-1)
     else
         ind = lookup(p.breaks, x, 3)
@@ -147,12 +147,12 @@ function evalbase(
     end
 
     m, n, ind = _prep_evalbase(p, x)
-    z = Array{basis_eltype(p, x)}(length(x))
+    z = Array{basis_eltype(p, x)}(undef, length(x))
     for i in 1:length(x)
         z[i] = (x[i]-p.breaks[ind[i]])/(p.breaks[ind[i]+1]-p.breaks[ind[i]])
     end
 
-    out = sparse(vcat(1:m, 1:m), vcat(ind, ind+1), vcat(1-z, z), m, n)
+    out = sparse(vcat(1:m, 1:m), vcat(ind, ind .+ 1), vcat(1 .- z, z), m, n)
     return out
 end
 
@@ -168,7 +168,7 @@ function evalbase(
     m, n, ind = _prep_evalbase(p, x)
 
     T = basis_eltype(p, x)
-    z = Array{T}(2*length(x))
+    z = Array{T}(undef, 2*length(x))
     for i in 1:length(x)
         ix = 2i
         z[ix] = (x[i]-p.breaks[ind[i]])/(p.breaks[ind[i]+1]-p.breaks[ind[i]])
@@ -186,7 +186,7 @@ function evalbase(
 end
 
 function evalbase(p::LinParams, x, order::AbstractArray{Int})
-    out = Array{SparseMatrixCSC{basis_eltype(p,x),Int}}(size(order))
+    out = Array{SparseMatrixCSC{basis_eltype(p,x),Int}}(undef, size(order))
 
     for I in eachindex(order)
         out[I] = evalbase(p, x, order[I])

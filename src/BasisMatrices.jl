@@ -1,5 +1,3 @@
-__precompile__()
-
 module BasisMatrices
 
 # TODO: still need to write fund, minterp
@@ -42,6 +40,9 @@ export nodes, get_coefs, funfitxy, funfitf, funeval, evalbase,
 #re-exports
 export gridmake, gridmake!, ckron
 
+# stdlib
+using SparseArrays, LinearAlgebra, Statistics
+
 abstract type BasisFamily end
 abstract type BasisParams end
 const IntSorV = Union{Int, AbstractVector{Int}}
@@ -53,9 +54,9 @@ include("spline_sparse.jl")
 # include the families
 
 # BasisParams interface
-Base.issparse(::Type{T}) where {T<:BasisParams} = false
+SparseArrays.issparse(::Type{T}) where {T<:BasisParams} = false
 Base.ndims(::BasisParams) = 1
-for f in [:family, :family_name, :(Base.issparse), :(Base.eltype)]
+for f in [:family, :family_name, :(SparseArrays.issparse), :(Base.eltype)]
     @eval $(f)(::T) where {T<:BasisParams} = $(f)(T)
 end
 include("cheb.jl")

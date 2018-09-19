@@ -1,7 +1,7 @@
 module BasisMatricesTests
 
 using BasisMatrices
-using Base.Test
+using Test, LinearAlgebra, SparseArrays, Statistics
 
 tests = ["types.jl", "basis.jl", "util.jl", "spline.jl", "interp.jl",
          "cheb.jl", "lin.jl", "basis_structure.jl", "complete.jl",
@@ -14,7 +14,7 @@ end
 end_jl(s) = endswith(s, ".jl") ? s : s * ".jl"
 
 for t in tests
-    print_with_color(:green, "* $t\n")
+    printstyled("* $t\n", color=:green)
     include(end_jl(t))
 end
 

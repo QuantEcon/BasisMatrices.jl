@@ -72,31 +72,31 @@ function derivative_op(p::ChebParams, x, order=1)
     n, a, b = p.n, p.a, p.b
     if order > 0
         # TODO: figure out some caching mechanism that avoids globals
-        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(max(2, order)) # 49
-        i = repmat(1:n', 1, n)
+        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(undef, max(2, order)) # 49
+        i = repeat(1:n', 1, n)
         j = i'  # 50
 
         # 51
-        inds = find((rem.(i + j, 2) .== 1) .& (j .> i))
-        r, c = similar(inds), similar(inds)
+        inds = findall((rem.(i + j, 2) .== 1) .& (j .> i))
+        r, c = similar(inds, Int), similar(inds, Int)
         for ix in 1:length(inds)
-            r[ix], c[ix] = ind2sub((n, n), inds[ix])
+            r[ix], c[ix] = Tuple(CartesianIndices((n, n))[inds[ix]])
         end
 
-        d = sparse(r, c, (4/(b-a)) * (vec(j[1, c])-1), n-1, n)  # 52
+        d = sparse(r, c, (4/(b-a)) * (vec(j[1, c]) .- 1), n-1, n)  # 52
         d[1, :] ./= 2  # 53
         D[1] = d  # 54
         for ii in 2:max(2, order)
             D[ii] = d[1:n-ii, 1:n-ii+1] * D[ii-1]  # 56
         end
     else
-        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(abs(order))  # 64
+        D = Array{SparseMatrixCSC{basis_eltype(p, x),Int64}}(undef, abs(order))  # 64
         nn = n - order  # 65
         z = (0.25 * (b - a)) ./(1:nn)  # 66
         d = sparse(vcat(1:nn, 1:nn-2), vcat(1:nn, 3:nn), vcat(z, -z[1:nn-2]),
                    nn, nn)  # 67
         d[1, 1] *= 2  # 68
-        d0 = ((-1).^(0:nn-1)') .* sum(d, 1)  # 69
+        d0 = ((-1).^(0:nn-1))' .* sum(d, dims=1)  # 69
         D[1] = sparse(vcat(d0[1:n]', d[1:n, 1:n]))  # 70
         for ii=-2:-1:order
             ind = 1:n-ii-1
@@ -144,7 +144,7 @@ function evalbase(p::ChebParams, x::AbstractArray, order::AbstractVector{Int}, n
         bas = evalbasex(ChebParams(n-minorder, a, b), x)  # 44
     # end
 
-    B = Array{Matrix{basis_eltype(p, x)}}(length(order))
+    B = Array{Matrix{basis_eltype(p, x)}}(undef, length(order))
     if maxorder > 0 D = derivative_op(p, x, maxorder)[1] end
     if minorder < 0 I = derivative_op(p, x, minorder)[1] end
 
@@ -177,10 +177,10 @@ function evalbasex!(out::AbstractMatrix, z::AbstractVector{T},
     z .= _unscale.([p], x)
     m = length(z)
 
-    @inbounds out[:, 1] = 1.0
-    @inbounds out[:, 2] = z
+    @inbounds out[:, 1] .= 1.0
+    @inbounds out[:, 2] .= z
 
-    scale!(z, 2.0)
+    z .*= 2.0
 
     @inbounds for j in 3:p.n
         @simd for i in 1:m
@@ -196,5 +196,5 @@ function evalbasex!(out::AbstractMatrix, p::ChebParams, x::AbstractArray)
 end
 
 function evalbasex(p::ChebParams, x::AbstractArray)
-    evalbasex!(Array{basis_eltype(p, x)}(size(x, 1), p.n), p, x)
+    evalbasex!(Array{basis_eltype(p, x)}(undef, size(x, 1), p.n), p, x)
 end

@@ -1,7 +1,7 @@
 language: julia
 sudo: required
 julia:
-    - 0.6
+    - 1.0
     - nightly
 matrix:
   allow_failures:

@@ -8,9 +8,8 @@ struct Permuter{T<:AbstractVector}
 end
 Permuter(a::T) where {T<:AbstractVector} = Permuter{T}(a)
 
-Base.start(p::Permuter) = p.len
-Base.done(p::Permuter, i::Int) = i == 0
-function Base.next(p::Permuter, i::Int)
+function Base.iterate(p::Permuter, i=p.len)
+    i == 0 && return nothing
     while true
         i -= 1
 
@@ -37,6 +36,7 @@ function Base.next(p::Permuter, i::Int)
 end
 
 function cartprod(arrs, out=Array{eltype(arrs[1])}(
+                                undef,
                                 prod([length(a) for a in arrs]),
                                 length(arrs))
                                 )
@@ -62,7 +62,7 @@ function m_i(i::Int)
 end
 
 function cheby2n(x::AbstractArray{T}, n::Int, kind::Int=1) where T<:Number
-    out = Array{T}(size(x)..., n+1)
+    out = Array{T}(undef, size(x)..., n+1)
     cheby2n!(out, x, n, kind)
 end
 
@@ -78,7 +78,7 @@ function cheby2n!(out::AbstractArray{T}, x::AbstractArray{T,N},
         error("out must have dimensions $(tuple(size(x)..., n+1))")
     end
 
-    R = CartesianRange(size(x))
+    R = CartesianIndices(size(x))
     # fill first element with ones
     @inbounds @simd for I in R
         out[I, 1] = one(T)
@@ -113,13 +113,13 @@ function s_n(n::Int)
     pts
 end
 
-doc"""
+"""
 Finds all of the unidimensional disjoint sets of Chebychev extrema that are
 used to construct the grid.  It improves on past algorithms by noting  that
-$A_{n} = S_{n}$ [evens] except for $A_1= \{0\}$  and $A_2 = \{-1, 1\}$.
-Additionally, $A_{n} = A_{n+1}$ [odds] This prevents the calculation of these
+``A_{n} = S_{n}`` [evens] except for ``A_1= \\{0\\}``  and ``A_2 = \\{-1, 1\\}``.
+Additionally, ``A_{n} = A_{n+1}`` [odds] This prevents the calculation of these
 nodes repeatedly. Thus we only need to calculate biggest of the S_n's to build
-the sequence of $A_n$ 's
+the sequence of ``A_n`` 's
 
 See section 3.2 of the paper...
 """
@@ -142,9 +142,9 @@ end
 
 
 
-doc"""
+"""
 For each number in 1 to `n`, compute the Smolyak indices for the corresponding
-basis functions. This is the $n$ in $\phi_n$. The output is A dictionary whose
+basis functions. This is the ``n`` in ``\\phi_n``. The output is A dictionary whose
 keys are the Smolyak index `n` and values are ranges containing all basis
 polynomial subscripts for that Smolyak index
 """
@@ -168,11 +168,11 @@ end
 #- Construction Utilities -#
 ## ---------------------- ##
 
-doc"""
+"""
     smol_inds(d::Int, mu::Int)
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu$.
+Finds all of the indices that satisfy the requirement that ``d \\leq \\sum_{i=1}^d
+\\leq d + \\mu``.
 """
 function smol_inds(d::Int, mu::Int)
 
@@ -198,11 +198,11 @@ function smol_inds(d::Int, mu::Int)
     return true_inds
 end
 
-doc"""
+"""
     smol_inds(d::Int, mu::AbstractVector{Int})
 
-Finds all of the indices that satisfy the requirement that $d \leq \sum_{i=1}^d
-\leq d + \mu_i$.
+Finds all of the indices that satisfy the requirement that ``d \\leq \\sum_{i=1}^d
+\\leq d + \\mu_i``.
 
 This is the anisotropic version of the method that allows mu to vary for each
 dimension
@@ -214,7 +214,7 @@ function smol_inds(d::Int, mu::AbstractVector{Int})
     length(mu) != d &&  error("ValueError: mu must have d elements.")
 
     mu_max = maximum(mu)
-    mup1 = mu + 1
+    mup1 = mu .+ 1
 
     p_vals = 1:(mu_max+1)
 
@@ -285,7 +285,7 @@ function build_B!(out::AbstractMatrix{T}, d::Int, mu::IntSorV,
 end
 
 function build_B(d::Int, mu::IntSorV, pts::Matrix{Float64}, b_inds::Matrix{Int64})
-    build_B!(Array{Float64}(size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
+    build_B!(Array{Float64}(undef, size(pts, 1), size(b_inds, 1)), d, mu, pts, b_inds)
 end
 
 function dom2cube!(out::AbstractMatrix, pts::AbstractMatrix,
@@ -327,5 +327,5 @@ end
 for f in [:dom2cube!, :cube2dom!]
     no_bang = Symbol(string(f)[1:end-1])
     @eval $(no_bang)(pts::AbstractMatrix{T}, lb::AbstractVector, ub::AbstractVector) where {T} =
-        $(f)(Array{T}(size(pts, 1), length(lb)), pts, lb, ub)
+        $(f)(Array{T}(undef, size(pts, 1), length(lb)), pts, lb, ub)
 end

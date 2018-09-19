@@ -34,7 +34,7 @@ end
 @inline col_ix(s::SplineSparse{T,I,N}, row, chunk) where {T,I,N} =
     N*(row-1) + chunk
 
-function Base.full(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
+function Base.Array(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     out = zeros(T, nrow, s.ncol)
 
@@ -50,10 +50,10 @@ function Base.full(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     out
 end
 
-function Base.findnz(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
+function SparseArrays.findnz(s::SplineSparse{T,I,N,L}) where {T,I,N,L}
     nrow = _nrows(s)
     rows = repeat(collect(I, 1:nrow), inner=[N*L])
-    cols = Array{I}(length(s.vals))
+    cols = Array{I}(undef, length(s.vals))
 
     for row in 1:nrow
         for chunk in 1:N
@@ -72,7 +72,7 @@ function Base.convert(::Type{SparseMatrixCSC}, s::SplineSparse)
     sparse(I, J, V, _nrows(s), s.ncol)
 end
 
-Base.sparse(s::SplineSparse) = convert(SparseMatrixCSC, s)
+SparseArrays.sparse(s::SplineSparse) = convert(SparseMatrixCSC, s)
 
 function Base.getindex(s::SplineSparse{T,I,N,L}, row::Integer, cols::Integer) where {T,I,N,L}
     for chunk in 1:N
@@ -116,8 +116,8 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     nrow = _nrows(s1)
     _nrows(s2) == nrow || error("s1 and s2 must have same number of rows")
 
-    cols = Array{$I}($N*nrow)
-    vals = Array{$T}($N*$len*nrow)
+    cols = Array{$I}(undef, $N*nrow)
+    vals = Array{$T}(undef, $N*$len*nrow)
 
     ix = 0
     c_ix = 0
@@ -145,7 +145,7 @@ Base.size(s::SplineSparse, i::Integer) = i == 1 ? _nrows(s) :
     end
 end
 
-function Base.A_mul_B!(out::AbstractVector{Tout},
+function LinearAlgebra.mul!(out::AbstractVector{Tout},
                        s::SplineSparse{T,I,N,L},
                        v::AbstractVector) where {T,I,N,L,Tout}
     @inbounds for row in eachindex(out)
@@ -167,8 +167,8 @@ function *(s::SplineSparse{T}, v::AbstractVector{T2}) where {T,T2}
     size(s, 2) == size(v, 1) || throw(DimensionMismatch())
 
     out_T = promote_type(T, T2)
-    out = Array{out_T}(size(s, 1))
-    A_mul_B!(out, s, v)
+    out = Array{out_T}(undef, size(s, 1))
+    mul!(out, s, v)
 end
 
 # TODO: define method A_mul_B!(ss::SplineSparse, csc::SparseMatrixCSC)
@@ -218,7 +218,13 @@ function tensor_prod(t::Type{T}, syms, inds, lens, add_index) where T<:AbstractA
                 :call,
                 :(*),
                 Symbol(syms[1], "_", i),
-                tensor_prod(t, syms[2:end], cat(1, inds,[i-1]), lens[2:end], add_index)
+                tensor_prod(
+                    t,
+                    syms[2:end],
+                    cat(inds, [i-1], dims=1),
+                    lens[2:end],
+                    add_index
+                )
             )
             push!(exprs, e)
         end
@@ -234,7 +240,7 @@ shape_c_expr(::Type{T}) where {T<:AbstractMatrix} = :(reshape(_c, reverse(_ncol.
 const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
 
 # if we have all `SplineSparse`s we can special case out = rk*c
-@generated function Base.A_mul_B!(out::StridedVecOrMat,
+@generated function LinearAlgebra.mul!(out::StridedVecOrMat,
                                   rk::RKSS,
                                   _c::StridedVecOrMat)
     N = length(rk.parameters[1].parameters)

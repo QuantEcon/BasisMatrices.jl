@@ -78,7 +78,7 @@ end
 
 function build_B(sp::SmolyakParams, pts::Matrix{Float64},
                  b_inds::Matrix{Int64}=sp.pinds)
-    build_B!(Array{Float64}(size(pts, 1), size(b_inds, 1)), sp, pts, b_inds)
+    build_B!(Array{Float64}(undef, size(pts, 1), size(b_inds, 1)), sp, pts, b_inds)
 end
 
 function dom2cube!(out::AbstractMatrix, pts::AbstractMatrix,
@@ -112,7 +112,7 @@ function Base.show(io::IO, p::SmolyakParams)
 end
 
 # TODO: fix this
-function Base.length{T,Ti<:Integer}(sp::SmolyakParams{T,Ti})::Int
+function Base.length(sp::SmolyakParams{T,<:Integer})::Int where T
     d, mu = sp.d, sp.mu
     mu == 1 ? 2d - 1 :
     mu == 2 ? Int(1 + 4d + 4d*(d-1)/2 ) :

@@ -5,12 +5,12 @@
     n = 5
     a = 0
     b = 1
-    params = SplineParams(linspace(a,b,n),0,1)
+    params = SplineParams(range(a,stop=b,length=n), 0, 1)
 
     x = rand(10000)
 
     basestr = @inferred BasisMatrices.evalbase(params, x)
-    base = full(basestr)
+    base = Array(basestr)
 
     # vector of basis functions
 
@@ -29,7 +29,7 @@
         end
     end
 
-    manualbase = Array{Float64}(length(x), n)
+    manualbase = Array{Float64}(undef, length(x), n)
 
     for i in 1:length(x)
         manualbase[i, :] = linBspline(x[i])
@@ -40,7 +40,7 @@
     end
 
     # test stuff that isn't implemented
-    @test_throws ErrorException evalbase(SplineSparse, params, nodes(params), 1)
+    params2 = SplineParams(10, 0, 1, 2)
     @test_throws ErrorException evalbase(SplineSparse, params, nodes(params), -1)
     @test_throws ErrorException evalbase(params, nodes(params), -1)
 

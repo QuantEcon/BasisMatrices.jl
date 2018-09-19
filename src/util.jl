@@ -7,7 +7,7 @@ import Base: *
 function ckronx(b::AbstractMatrix{TM}, c::Array,
                 ind::AbstractArray{Int}=1:length(b)) where TM<:AbstractMatrix
     d = length(ind)  # 26
-    n = Array{Int}(d)  # 27
+    n = Array{Int}(undef, d)  # 27
     for i=1:d  # 28
         n[i] = size(b[ind[i]], 2)
     end
@@ -202,7 +202,7 @@ Base.length(rk::RowKron) = length(rk.B)
 @generated Base.eltype(::RowKron{T}) where {T} =
     reduce(promote_type, map(eltype, T.parameters))
 
-Base.issparse(rk::RowKron) = map(issparse, rk.B)
+SparseArrays.issparse(rk::RowKron) = map(issparse, rk.B)
 
 function Base.size(rk::RowKron, i::Int)
     if i == 1
@@ -218,21 +218,39 @@ Base.size(rk::RowKron) = (size(rk, 1), size(rk, 2))
 
 sizes(rk::RowKron, i::Integer) = collect(map(A -> size(A, i), rk.B))
 
-for (f, op, transp) in ((:A_mul_B!, :identity, false),
-                        (:Ac_mul_B!, :ctranspose, true),
-                        (:At_mul_B!, :transpose, true))
+function Base.size(rkT::Union{Adjoint{T,<:RowKron},Transpose{T,<:RowKron}}) where T
+    size(rkT.parent, 2), size(rkT.parent, 1)
+end
+function sizes(
+        rkT::Union{Adjoint{T,<:RowKron},Transpose{T,<:RowKron}},
+        i::Integer
+    ) where T
+    collect(map(A -> size(A, i), rkT.parent.B))
+end
+function Base.length(rkT::Union{Adjoint{T,<:RowKron},Transpose{T,<:RowKron}}) where T
+    length(rkT.parent)
+end
+function Base.eltype(rkT::Union{Adjoint{T,<:RowKron},Transpose{T,<:RowKron}}) where T
+    eltype(rkT.parent)
+end
+
+for (op, transp) in ((:identity, false),
+                     (:adjoint, true),
+                     (:transpose, true))
 
     # code to do type checks for input args
     checks = transp ? quote
-        size(out, 1) == size(rk, 2) || throw(DimensionMismatch())
+        size(out, 1) == size(rk, 1) || throw(DimensionMismatch())
         size(out, 2) == size(c, 2) || throw(DimensionMismatch())
-        size(c, 1) == size(rk, 1) || throw(DimensionMismatch())
+        size(c, 1) == size(rk, 2) || throw(DimensionMismatch())
         fill!(out, 0.0)
+        nrow = size(rk, 2)
     end : quote
         size(out, 1) == size(rk, 1) || throw(DimensionMismatch())
         size(out, 2) == size(c, 2) || throw(DimensionMismatch())
         size(c, 1) == size(rk, 2) || throw(DimensionMismatch())
         fill!(out, 0.0)
+        nrow = size(rk, 1)
     end
 
     # the outer loop has a different range depending on transpose
@@ -278,24 +296,34 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
         end
     end
 
-    @eval begin
-    function Base.$(f)(out::StridedVecOrMat, rk::RowKron, c::StridedVecOrMat)
-        $(checks)
+    T = op == :identity ? :(RowKron) :
+        op == :adjoint ? :(Adjoint{T,<:RowKron}) :
+        :(Transpose{T,<:RowKron})
 
-        _is_sparse = map(x -> isa(x, SparseMatrixCSC), rk.B)
+    get_B = transp ? quote
+        _B = rk.parent.B
+    end : quote
+        _B = rk.B
+    end
+
+    @eval begin
+    function LinearAlgebra.mul!(out::StridedVecOrMat, rk::$(T), c::StridedVecOrMat) where T
+        $(checks)
+        $(get_B)
+
+        _is_sparse = map(x -> isa(x, SparseMatrixCSC), _B)
         _last_sparse = _is_sparse[end]
 
-        nrow = size(rk, 1)
         Nb = length(rk)
-        d = Array{eltype(rk)}(nrow, Nb)
-        d[:, 1] = one(eltype(rk))
+        d = Array{eltype(rk)}(undef, nrow, Nb)
+        d[:, 1] .= one(eltype(rk))
 
         n_col_B = sizes(rk, 2)
-        cur_col_B = copy(n_col_B) + 1
+        cur_col_B = copy(n_col_B) .+ 1
 
         # simplify notation
         ccol = size(c, 2)
-        Bend = rk.B[end]
+        Bend = _B[end]
 
         for i in $(outer_loop_range)  # loop over rows of out
             if cur_col_B[end] > n_col_B[end]
@@ -311,10 +339,10 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
                 for col_d in j+1:Nb
                     _j = col_d - 1
                     _col_j = cur_col_B[_j]
-                    this_B = rk.B[_j]
+                    this_B = _B[_j]
 
                     if _is_sparse[_j]
-                        d[:, col_d] = 0.0
+                        d[:, col_d] .= 0.0
 
                         # fill in non-zero rows
                         for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
@@ -324,7 +352,7 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
                         end
 
                     else
-                        @simd for row_d in 1:nrow
+                        for row_d in 1:nrow
                             d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
                         end
                     end
@@ -344,27 +372,15 @@ for (f, op, transp) in ((:A_mul_B!, :identity, false),
     end  # @eval begin
 end
 
-function *(rk::RowKron, c::StridedVector)
+function *(rk::Union{RowKron,Transpose{T,RowKron},Adjoint{T,RowKron}}, c::StridedVector) where T
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1))
-    A_mul_B!(out, rk, c)
+    mul!(out, rk, c)
     out
 end
 
-function *(rk::RowKron, c::StridedMatrix)
+function *(rk::Union{RowKron,Transpose{T,RowKron},Adjoint{T,RowKron}}, c::StridedMatrix) where T
     out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 1), size(c, 2))
-    A_mul_B!(out, rk, c)
-    out
-end
-
-function Base.At_mul_B(rk::RowKron, c::StridedVector)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2))
-    At_mul_B!(out, rk, c)
-    out
-end
-
-function Base.At_mul_B(rk::RowKron, c::StridedMatrix)
-    out = zeros(promote_type(eltype(rk), eltype(c)), size(rk, 2), size(c, 2))
-    At_mul_B!(out, rk, c)
+    mul!(out, rk, c)
     out
 end
 
@@ -380,15 +396,15 @@ end
 
 # nodeunif.m -- DONE
 function nodeunif(n::Int, a::Int, b::Int)
-    x = linspace(a, b, n)
+    x = range(a, stop=b, length=n)
     return x, x
 end
 
 function nodeunif(n::AbstractArray{T}, a::AbstractArray, b::AbstractArray) where T<:Integer
     d = length(n)
-    xcoord = Array{AbstractVector}(d)
+    xcoord = Array{AbstractVector}(undef, d)
     for k=1:d
-        xcoord[k] = linspace(a[k], b[k], n[k])
+        xcoord[k] = range(a[k], stop=b[k], length=n[k])
     end
     return gridmake(xcoord...), xcoord
 end
@@ -427,7 +443,7 @@ end
 function lookup(table::AbstractVector, x::AbstractVector, p::Int=0)
     n = length(table)
     m = length(x)
-    out = Array{Int}(m)
+    out = Array{Int}(undef, m)
 
     # lower enbound adjustment
     numfirst = 1
@@ -608,8 +624,8 @@ function _allocate_row_kron_out(::Type{SparseMatrixCSC},
     k = _row_kron_sparse_out_nnz(A, B)
     SparseMatrixCSC(nobsa, na*nb,
         ones(Int, na*nb+1),          # colptr
-        Array{Int}(k),                # rowval
-        Array{promote_type(S,T)}(k)  # nzval
+        Array{Int}(undef, k),               # rowval
+        Array{promote_type(S,T)}(undef, k)  # nzval
     )
 end
 
@@ -618,7 +634,7 @@ function _allocate_row_kron_out(::Type{Matrix},
                                 B::AbstractMatrix{S}) where {T,S}
     nobsa, na = size(A)
     nobsb, nb = size(B)
-    Array{promote_type(S,T)}(nobsa, na*nb)
+    Array{promote_type(S,T)}(undef, nobsa, na*nb)
 end
 
 _allocate_row_kron_out(A::SparseMatrixCSC, B::SparseMatrixCSC) =

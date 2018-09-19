@@ -21,7 +21,7 @@
     @test BasisMatrices.lookup([1.0], x2, 3) == [1, 1]
 
     # test scalar version of lookup
-    x2 = collect(linspace(-2.0, 4.0, 10))
+    x2 = collect(range(-2.0, stop=4.0, length=10))
     @test [BasisMatrices.lookup(x2, -3.0, i) for i=0:3] == [0, 1, 0, 1]
     @test [BasisMatrices.lookup(x2, 5.0, i) for i=0:3] == [10, 10, 9, 9]
     @test [BasisMatrices.lookup(x2, i, 0) for i=x2] == collect(0:length(x2)-1)
@@ -86,22 +86,22 @@ end
 
 
     for i in 1:100
-        A = sprandn(30, 5, 0.3)
-        B = sprandn(30, 3, 0.3)
+        A = SparseArrays.sprandn(30, 5, 0.3)
+        B = SparseArrays.sprandn(30, 3, 0.3)
 
         want = row_kron(A, B)
 
-        @test maximum(abs, want - row_kron(full(A), B)) == 0
-        @test maximum(abs, want - row_kron(A, full(B))) == 0
-        @test maximum(abs, want - row_kron(full(A), full(B))) == 0
+        @test maximum(abs, want - row_kron(Array(A), B)) == 0
+        @test maximum(abs, want - row_kron(A, Array(B))) == 0
+        @test maximum(abs, want - row_kron(Array(A), Array(B))) == 0
     end
 end
 
 @testset "RowKron" begin
     # throws when try ot pass a non matrix
-    @test_throws MethodError RowKron((eye(2), I))
+    @test_throws MethodError RowKron((rand(2, 2), "foo"))
 
-    rk = RowKron(eye(3), eye(3), eye(3, 100))
+    rk = RowKron(Matrix(1.0I, 3, 3), Matrix(1.0I, 3, 3), Matrix(1.0I, 3, 100))
     @test size(rk, 1) == 3
     @test size(rk, 2) == 900
     @test size(rk) == (3, 900)
@@ -111,44 +111,44 @@ end
         @test BasisMatrices.sizes(rk, i) == [1, 1, 1]
     end
 
-    bs = AbstractMatrix[sprandn(5, rand(5:13), 0.8) for _ in 1:3]
+    bs = AbstractMatrix[SparseArrays.sprandn(5, rand(5:13), 0.8) for _ in 1:3]
     rk_last_sparse = RowKron(bs...)
     big_last_sparse = reduce(row_kron, bs)
 
-    push!(bs, eye(5))
+    push!(bs, Matrix(1.0I, 5, 5))
     rk_last_full = RowKron(bs...)
     big_last_full = reduce(row_kron, bs)
 
-    for (rk, big) in [(rk_last_sparse, big_last_sparse), (rk_last_full, big_last_full)]
+    for (rk, _big) in [(rk_last_sparse, big_last_sparse), (rk_last_full, big_last_full)]
         c = rand(size(rk, 2))
         c2 = rand(size(rk, 1))
 
         # non-mutating
-        @test rk * c == big * c
-        @test rk * [c c] == big * [c c]
+        @test rk * c == _big * c
+        @test rk * [c c] == _big * [c c]
 
         # mutating
-        A_mul_B!(c2, rk, c)
-        @test c2 == big*c
+        mul!(c2, rk, c)
+        @test c2 == _big*c
 
         # mutating matrix
         c2mat = [c2 c2]
-        A_mul_B!(c2mat, rk, [c c])
-        @test c2mat == big * [c c]
+        mul!(c2mat, rk, [c c])
+        @test c2mat == _big * [c c]
 
-        ## Transepose op
-        # reuse c vector for this...
-        At_mul_B!(c, rk, c2)
-        @test c == big'*c2
+        ## transpose op
+        # reuse c and c2 for this...
+        mul!(c, Transpose(rk), c2)
+        @test c == _big'*c2
 
         # vector and matrix versions
-        @test At_mul_B(rk, c2) == c
-        @test At_mul_B(rk, [c2 c2]) == [c c]
+        @test *(Transpose(rk), c2) == c
+        @test *(Transpose(rk), [c2 c2]) == [c c]
 
         # mutating matrix
         c1mat = [c c]
-        At_mul_B!(c1mat, rk, [c2 c2])
-        @test c1mat == big'*[c2 c2]
+        mul!(c1mat, Transpose(rk), [c2 c2])
+        @test c1mat == _big'*[c2 c2]
 
     end
 
@@ -157,7 +157,7 @@ end
 @testset "cdprodx" begin
     for nrow in 3:3:100
         for nb in 2:5
-            b = [sprand(nrow, rand(5:13), 0.3) for _ in 1:nb]
+            b = [SparseArrays.sprand(nrow, rand(5:13), 0.3) for _ in 1:nb]
             c = rand(prod([size(A, 2) for A in b]))
 
             full_b = reduce(row_kron, b)
@@ -173,23 +173,23 @@ end
             # now test transpose
             c2 = rand(size(rk, 1))
             want2 = full_b'c2
-            @test maximum(abs, want2 - Base.At_mul_B(rk, c2)) < 1e-12
+            @test maximum(abs, want2 - *(Transpose(rk), c2)) < 1e-12
         end
     end
 
     x = rand(10)
-    @test BasisMatrices.cdprodx(eye(10), x) == x
+    @test BasisMatrices.cdprodx(Matrix(1.0I, 10, 10), x) == x
 end
 
 @testset "nodeunif" begin
     X, x12 = BasisMatrices.nodeunif([5, 5], [0, 1], [3, 3])
-    @test x12[1] == linspace(0, 3, 5)
-    @test x12[2] == linspace(1, 3, 5)
+    @test x12[1] == range(0, stop=3, length=5)
+    @test x12[2] == range(1, stop=3, length=5)
     @test size(X) == (25, 2)
-    @test X[:, 1] == repmat(x12[1], 5)
+    @test X[:, 1] == repeat(x12[1], 5)
     @test X[:, 2] == repeat(x12[2], inner=[5])
 
     x, x1 = BasisMatrices.nodeunif(5, 0, 3)
-    @test x == linspace(0, 3, 5)
-    @test x1 == linspace(0, 3, 5)
+    @test x == range(0, stop=3, length=5)
+    @test x1 == range(0, stop=3, length=5)
 end

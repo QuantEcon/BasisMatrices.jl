@@ -80,7 +80,7 @@ function check_convert(bs::BasisMatrix, order::Matrix)
     d1 != d && error("ORDER incompatible with basis functions")  # 35-37
 
     # 39-41
-    if any(minimum(order, 1) .< bs.order)
+    if any(minimum(order, dims=1) .< bs.order)
         error("Order of derivative operators exceeds basis")
     end
     return d, numbas, d1
@@ -116,8 +116,8 @@ function check_basis_structure(N::Int, x, order)
     # initialize basis structure (66-74)
     m = size(order, 1)  # by this time order is a matrix
     if m > 1
-        minorder = minimum(order, 1)
-        numbases = (maximum(order, 1) - minorder) + 1
+        minorder = minimum(order, dims=1)
+        numbases = (maximum(order, dims=1) .- minorder) .+ 1
     else
         minorder = order + zeros(Int, 1, N)
         numbases = fill(1, 1, N)
@@ -141,7 +141,7 @@ function Base.convert(::Type{Expanded}, bs::BasisMatrix{Direct,TM},
                   order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array{TM}(numbas, 1)
+    vals = Array{TM}(undef, numbas, 1)
 
     for i=1:numbas
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 63
@@ -158,7 +158,7 @@ function Base.convert(::Type{Expanded}, bs::BasisMatrix{Tensor,TM},
                   order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
 
-    vals = Array{TM}(numbas, 1)
+    vals = Array{TM}(undef, numbas, 1)
 
     for i=1:numbas  # 54
         vals[i] = bs.vals[order[i, d] - bs.order[d]+1, d]  # 55
@@ -179,8 +179,8 @@ end
 function Base.convert(::Type{Direct}, bs::BasisMatrix{Tensor,TM},
                       order=fill(0, 1, size(bs.order, 2))) where TM
     d, numbas, d1 = check_convert(bs, order)
-    vals = Array{TM}(numbas, d)
-    raw_ind = Array{Vector{Int}}(d)
+    vals = Array{TM}(undef, numbas, d)
+    raw_ind = Array{Vector{Int}}(undef, d)
 
     for j=1:d
         for i=1:size(bs.vals, 1)
@@ -215,7 +215,7 @@ function BasisMatrix(::Type{T2}, basis::Basis{N,BF}, ::Direct,
     out_order = minorder
     out_format = Direct()
     val_type = bmat_type(T2, basis, x)
-    vals = Array{val_type}(maximum(numbases), N)
+    vals = Array{val_type}(undef, maximum(numbases), N)
 
     # now do direct form, will convert to expanded later if needed
     for j=1:N
@@ -253,7 +253,7 @@ function BasisMatrix(::Type{T2}, basis::Basis{N,BT}, ::Tensor,
     out_order = minorder
     out_format = Tensor()
     val_type = bmat_type(T2, basis, x[1])  # TODO: reduce(promot_type, eltype.(x))
-    vals = Array{val_type}(maximum(numbases), N)
+    vals = Array{val_type}(undef, maximum(numbases), N)
 
     # construct tensor base
     for j in 1:N
@@ -301,14 +301,14 @@ end
 # method without vals eltypes
 function BasisMatrix(basis::Basis, tbm::TBM,
                      x::Union{AbstractArray,TensorX}, order=0) where TBM<:ABSR
-    BasisMatrix(Void, basis, tbm, x, order)
+    BasisMatrix(Nothing, basis, tbm, x, order)
 end
 
 function BasisMatrix(basis::Basis, x::Union{AbstractArray,TensorX}, order=0)
-    BasisMatrix(Void, basis, x, order)
+    BasisMatrix(Nothing, basis, x, order)
 end
 
 # method without x
 function BasisMatrix(basis::Basis, tbm::Union{Type{TBM},TBM}) where TBM<:ABSR
-    BasisMatrix(Void, basis, tbm)
+    BasisMatrix(Nothing, basis, tbm)
 end

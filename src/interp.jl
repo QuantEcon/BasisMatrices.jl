@@ -236,7 +236,7 @@ end
 # Convenience `Interpoland` type #
 # ------------------------------ #
 
-mutable struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
     basis::TB  # the basis -- can't change
     coefs::TC  # coefficients -- might change
     bmat::TBM  # BasisMatrix at nodes of `b` -- can't change

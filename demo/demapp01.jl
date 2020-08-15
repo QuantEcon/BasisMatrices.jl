@@ -2,7 +2,6 @@ import CompEcon
 using PyPlot
 using PyCall
 
-reload("CompEcon")
 ## DEMAPP01 Approximating functions on R
 
 # This m-file illustrates how to use CompEcon Toolbox routines to construct
@@ -21,11 +20,11 @@ reload("CompEcon")
 
 # Preliminary tasks
 function main()
-        f(x) = exp(-x)
+        f(x) = exp.(-x)
 
     # Set the endpoints of approximation interval:
-    a =  -1                            # left endpoint
-    b =   1                            # right endpoint
+    a =  -1.0                          # left endpoint
+    b =   1.0                          # right endpoint
 
     # Choose an approximation scheme. In this case, let us use an order 10
     # Chebychev approximation scheme:
@@ -74,8 +73,8 @@ function main()
 
     # One may evaluate the accuracy of the Chebychev polynomial approximant by
     # computing the approximation error on a highly refined grid of points:
-    ngrid = 5001                       # number of grid nodes
-    xgrid = linspace(a, b, ngrid)        # generate refined grid for plotting
+    ngrid = 5001                           # number of grid nodes
+    xgrid = range(a; stop=b, length=ngrid) # generate refined grid for plotting
 
 
     function plot_approx(f::Function, basistype::Symbol, n, a, b, xgrid, k=0)
@@ -92,12 +91,12 @@ function main()
 
         # plot error
         fig, ax = plt.subplots()
-        ax[:plot](xgrid,yapp-yact)
-        ax[:plot](xgrid, zeros(ngrid), "k--", linewidth=2)
-        ax[:set_xlabel]("x")
-        ax[:set_ylabel]("Error")
+        ax.plot(xgrid,yapp-yact)
+        ax.plot(xgrid, zeros(ngrid), "k--", linewidth=2)
+        ax.set_xlabel("x")
+        ax.set_ylabel("Error")
         nm = basistype == :spli ? "Degree $k spline" : "Degree $n Chebyshev"
-        ax[:set_title]("$nm Approximation Error for exp(-x)")
+        ax.:set_title("$nm Approximation Error for exp(-x)")
     end
 
     plot_approx(f, :cheb, n, a, b, xgrid)

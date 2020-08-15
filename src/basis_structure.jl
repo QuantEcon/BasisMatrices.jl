@@ -9,7 +9,7 @@ struct Tensor <: ABSR end
 struct Direct <: ABSR end
 struct Expanded <: ABSR end
 
-mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
+struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
     order::Matrix{Int}
     vals::Matrix{TM}
 end

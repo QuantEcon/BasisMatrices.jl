@@ -1,11 +1,14 @@
 using CompEcon
 using Dierckx
+using Statistics
 
+
+linspace(a,b,n) = range(a, stop=b, length=n)
 
 # Create functions to test against
-f1(x, y) = sin(x).*cos(y)
-f2(x, y) = exp(x) .* cos(y)
-f3(x, y) = 1.5 + log(x .* y)
+@. f1(x, y) = sin(x) * cos(y)
+@. f2(x, y) = exp(x) * cos(y)
+@. f3(x, y) = 1.5 + log(x * y)
 fs = [f1, f2, f3]
 nf = length(fs)
 
@@ -17,7 +20,7 @@ function compare_D_CE_levels(f::Function, x::Array{Float64, 1}, y::Array{Float64
     # Create Dierckx Spline (and data)
     n = length(x)
     z = f(x, y')
-    dspl = Spline2D(x, y, z; s=0., kx=order, ky=order)
+    dspl = Spline2D(x, y, z; s=0.0, kx=order, ky=order)
 
     # Create CompEcon Spline (and data)
     cebasis_x = Basis(SplineParams(x, 0, order))
@@ -33,10 +36,10 @@ function compare_D_CE_levels(f::Function, x::Array{Float64, 1}, y::Array{Float64
     zfine = f(xfine, yfine')
 
     deval = Dierckx.evalgrid(dspl, xfine, yfine)
-    derr = abs(zfine - deval)
+    derr = abs.(zfine .- deval)
 
     ceeval = CompEcon.funeval(c, cebasis, gridmake(xfine, yfine))
-    ceerr = abs(zfine - reshape(ceeval, 2*n+1, 2*n+1))
+    ceerr = abs.(zfine .- reshape(ceeval, 2*n+1, 2*n+1))
 
     return derr, ceerr
 end

@@ -4,7 +4,7 @@
 
 struct Spline <: BasisFamily end
 
-mutable struct SplineParams{T<:AbstractVector} <: BasisParams
+struct SplineParams{T<:AbstractVector} <: BasisParams
     breaks::T
     evennum::Int
     k::Int

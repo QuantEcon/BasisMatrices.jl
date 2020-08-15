@@ -21,6 +21,8 @@ For an API similar to the original [CompEcon Matlab package](http://www4.ncsu.ed
 Here's an example of how to use the Julia-based API to set up multi-dimensional basis matrix and work with it.
 
 ```julia
+using LinearAlgebra: lu
+linspace(a,b,n) = range(a; stop=b, length=n)
 ygrid0 = linspace(-4, 4, 10)
 agrid0 = linspace(0.0.^0.4, 100.0.^0.4, 25).^(1/0.4)
 
@@ -45,7 +47,7 @@ S, (agrid, ygrid) = nodes(basis)
 Φ_direct = BasisMatrix(basis, Direct(), S, [0 0])
 Φ_y = Φ_direct.vals[2]
 Φ = convert(Expanded, Φ_direct, [0 0]).vals[1]
-lu_Φ = lufact(Φ)
+lu_Φ = lu(Φ)
 ```
 
 ## Basic Overview of Julian API

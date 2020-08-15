@@ -4,7 +4,7 @@
 
 struct Lin <: BasisFamily end
 
-mutable struct LinParams{T<:AbstractVector} <: BasisParams
+struct LinParams{T<:AbstractVector} <: BasisParams
     breaks::T
     evennum::Int
     function LinParams{T}(breaks::T, evennum::Int) where T

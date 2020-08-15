@@ -4,7 +4,7 @@
 
 struct Cheb <: BasisFamily end
 
-mutable struct ChebParams{T<:Number} <: BasisParams
+struct ChebParams{T<:Number} <: BasisParams
     n::Int
     a::T
     b::T

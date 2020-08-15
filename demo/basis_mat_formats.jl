@@ -1,17 +1,26 @@
 using BasisMatrices
 
 # construct 2d basis
-basis = Basis(LinParams(15, -2, 2), LinParams(10, -1, 3))
+basis = Basis(LinParams(3, -2, 2), LinParams(2, -1, 3))
 S, (x, y) = nodes(basis)
 
 # define function to approximate
 func(x, y) = exp(-2*x) * sin(y)
 f = func.(S[:, 1], S[:, 2])
 
-### getting coefficient vector
+# Forms of basis matrices
+bmt = BasisMatrix(basis, Tensor(), [x, y])
+bmd = BasisMatrix(basis, Direct(), S)
+bme = BasisMatrix(basis, Expanded(), S)
+
+# Show equivalencies between basis matrices
+@assert size(bme.vals[1]) == (length(x)*length(y), length(x)*length(y))
+@assert     kron(bmt.vals[2], bmt.vals[1]) == bme.vals[1]
+@assert row_kron(bmd.vals[2], bmd.vals[1]) == bme.vals[1]
+
+# getting coefficient vector
 
 ## tensor form
-bmt = BasisMatrix(basis, Tensor(), [x, y])
 
 # bmt.vals[1] is all basis funcs for first dim, evaluated at nodes for first dim
 # similar for 2
@@ -27,7 +36,6 @@ c2 = funfitxy(basis, bmt, f)[1]
 @assert maximum(abs, c1 - c2) < 1e-14
 
 ## Direct form
-bmd = BasisMatrix(basis, Direct(), S)
 
 # bmd.vals[1] will be have size (length(x)*length(y), length(x)) and
 # bmd.vals[2] will be have size (length(x)*length(y), length(y))
@@ -51,7 +59,6 @@ c4 = funfitxy(basis, bmd, f)[1]
 @assert maximum(abs, c4 - c2) < 1e-14
 
 ## Expanded form
-bme = BasisMatrix(basis, Expanded(), S)
 
 # to get coefficients we just need to do bme.vals[1] \ f
 c5 = bme.vals[1] \ f

@@ -141,7 +141,7 @@ rows of the matrix argument.
 # interpolated function at points different from the interpolation nodes.
 # As an example, suppose we want to evaluate at all the original y points, but
 # new x points. We will want the full combination of all these points
-x2 = collect(linspace(-1.5, 1.5, 40))
+x2 = collect(range(-1.5; stop=1.5, length=40))
 
 # for evaluation of our approximation, let's evaluate func at these points
 f2 = vec(func.(x2, y'))
@@ -165,7 +165,7 @@ ft1 = kron(bmt.vals[2], Φ1_x2)*c1
 # thing and allocate vals first, then populate it and we had to pass type
 # params to the BasisMatrix constructor. We can get around this, we just need
 # to be more clever in how we accept arguments to BasisMatrix).
-bmt2_vals = Array{typeof(Φ1_x2)}(1, 2)
+bmt2_vals = Array{typeof(Φ1_x2)}(undef,1, 2)
 bmt2_vals[1] = Φ1_x2; bmt2_vals[2] = bmt.vals[2]
 bmt2 = BasisMatrix{Tensor,typeof(Φ1_x2)}([0 0], bmt2_vals)
 ft2 = funeval(c1, bmt2)

@@ -1,20 +1,20 @@
 using CompEcon
 using Dierckx
-
+using Statistics
 
 # Create functions to test against
-f1(x) = sin(x)
-fp1(x) = cos(x)
-f2(x) = exp(x)
-fp2(x) = exp(x)
-f3(x) = 1.5 + log(x)
-fp3(x) = 1./x
+f1(x) = sin.(x)
+fp1(x) = cos.(x)
+f2(x) = exp.(x)
+fp2(x) = exp.(x)
+f3(x) = 1.5 .+ log.(x)
+fp3(x) = 1.0 ./ x
 fs = [f1, f2, f3]
 fps = [fp1, fp2, fp3]
 nf = length(fs)
 
-x = collect(linspace(.5, 2, 35))
-finex = collect(linspace(1e-2, 2*pi - 1e-2, 150))
+x = collect(range(.5; stop=2, length=35))
+finex = collect(range(1e-2; stop=2*pi - 1e-2, length=150))
 ys = map(f->f(x), fs)
 finey = map(f->f(finex), fs)
 
@@ -32,14 +32,14 @@ function compare_D_CE_levels(f::Function, x::Array{Float64, 1}, order::Int)
     c, bs = funfitxy(cebasis, xx, yy)
 
     # Evaluate Splines on finer grid
-    xfine = collect(linspace(x[1], x[end], 2*n + 1))
+    xfine = collect(range(x[1]; stop=x[end], length=2*n + 1))
     yfine = f(xfine)
 
     deval = Dierckx.evaluate(dspl, xfine)
-    derr = abs(yfine - deval)
+    derr = abs.(yfine - deval)
 
     ceeval = CompEcon.funeval(c, cebasis, xfine)
-    ceerr = abs(yfine - ceeval)
+    ceerr = abs.(yfine - ceeval)
 
     # # Evaluate Derivative
     # dderiv1 = Dierckx.derivative(dspl1, finex)
@@ -62,14 +62,14 @@ function compare_D_CE_deriv(f::Function, fp::Function, x::Array{Float64, 1}, ord
     c, bs = funfitxy(cebasis, xx, yy)
 
     # Evaluate Splines on finer grid
-    xfine = collect(linspace(x[1], x[end], 2*n + 1))
+    xfine = collect(range(x[1]; stop=x[end], length=2*n + 1))
     ypfine = fp(xfine)
 
     devalderiv = Dierckx.derivative(dspl, xfine)
-    derr = abs(ypfine - devalderiv)
+    derr = abs.(ypfine - devalderiv)
 
-    ceevalderiv = CompEcon.funeval(c, cebasis, xfine, 1)
-    ceerr = abs(ypfine - ceevalderiv)
+    ceevalderiv = funeval(c, cebasis, xfine, ones(Int64, 1,1))
+    ceerr = abs.(ypfine .- ceevalderiv)
 
     return derr, ceerr
 end
@@ -87,19 +87,19 @@ for i=1:nf
     derr2_deriv, ceerr2_deriv = compare_D_CE_deriv(curr_f, curr_fp, x, 2)
     derr3_deriv, ceerr3_deriv = compare_D_CE_deriv(curr_f, curr_fp, x, 3)
 
-    println("Linear Approximation to Function")
+    println("\nLinear Approximation to Function\n")
     println("Dierckx Level Errors \n\t Max: $(maximum(derr1_levels)) \n\t Min: $(minimum(derr1_levels)) \n\t Mean: $(mean(derr1_levels))")
     # println("Dierckx Deriv Errors \n\t Max: $(maximum(derr1_deriv)) \n\t Min: $(minimum(derr1_deriv)) \n\t Mean: $(mean(derr1_deriv))")
     println("CompEcon Level Errors \n\t Max: $(maximum(ceerr1_levels)) \n\t Min: $(minimum(ceerr1_levels)) \n\t Mean: $(mean(ceerr1_levels))")
     # println("CompEcon Deriv Errors \n\t Max: $(maximum(ceerr1_deriv)) \n\t Min: $(minimum(ceerr1_deriv)) \n\t Mean: $(mean(ceerr1_deriv))")
 
-    println("Quadratic Approximation to Function")
+    println("\n\nQuadratic Approximation to Function\n")
     println("Dierckx Level Errors \n\t Max: $(maximum(derr2_levels)) \n\t Min: $(minimum(derr2_levels)) \n\t Mean: $(mean(derr2_levels))")
     println("Dierckx Deriv Errors \n\t Max: $(maximum(derr2_deriv)) \n\t Min: $(minimum(derr2_deriv)) \n\t Mean: $(mean(derr2_deriv))")
     println("CompEcon Level Errors \n\t Max: $(maximum(ceerr2_levels)) \n\t Min: $(minimum(ceerr2_levels)) \n\t Mean: $(mean(ceerr2_levels))")
     println("CompEcon Deriv Errors \n\t Max: $(maximum(ceerr2_deriv)) \n\t Min: $(minimum(ceerr2_deriv)) \n\t Mean: $(mean(ceerr2_deriv))")
 
-    println("Cubic Approximation to Function")
+    println("\n\nCubic Approximation to Function\n")
     println("Dierckx Level Errors \n\t Max: $(maximum(derr3_levels)) \n\t Min: $(minimum(derr3_levels)) \n\t Mean: $(mean(derr3_levels))")
     println("Dierckx Deriv Errors \n\t Max: $(maximum(derr3_deriv)) \n\t Min: $(minimum(derr3_deriv)) \n\t Mean: $(mean(derr3_deriv))")
     println("CompEcon Level Errors \n\t Max: $(maximum(ceerr3_levels)) \n\t Min: $(minimum(ceerr3_levels)) \n\t Mean: $(mean(ceerr3_levels))")

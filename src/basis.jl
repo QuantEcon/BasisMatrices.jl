@@ -14,7 +14,7 @@ end
 # Basis Type #
 # ---------- #
 
-mutable struct Basis{N,TP<:Tuple}
+struct Basis{N,TP<:Tuple}
     params::TP     # params to construct basis
 end
 

@@ -21,6 +21,8 @@ For an API similar to the original [CompEcon Matlab package](http://www4.ncsu.ed
 Here's an example of how to use the Julia-based API to set up multi-dimensional basis matrix and work with it.
 
 ```julia
+using LinearAlgebra: lu
+linspace(a,b,n) = range(a; stop=b, length=n)
 ygrid0 = linspace(-4, 4, 10)
 agrid0 = linspace(0.0.^0.4, 100.0.^0.4, 25).^(1/0.4)
 
@@ -45,7 +47,7 @@ S, (agrid, ygrid) = nodes(basis)
 Φ_direct = BasisMatrix(basis, Direct(), S, [0 0])
 Φ_y = Φ_direct.vals[2]
 Φ = convert(Expanded, Φ_direct, [0 0]).vals[1]
-lu_Φ = lufact(Φ)
+lu_Φ = lu(Φ)
 ```
 
 ## Basic Overview of Julian API
@@ -82,19 +84,19 @@ struct Lin <: BasisFamily end
 struct Spline <: BasisFamily end
 
 abstract type BasisParams end
-mutable struct ChebParams <: BasisParams
+struct ChebParams <: BasisParams
     n::Int
     a::Float64
     b::Float64
 end
 
-mutable struct SplineParams <: BasisParams
+struct SplineParams <: BasisParams
     breaks::Vector{Float64}
     evennum::Int
     k::Int
 end
 
-mutable struct LinParams <: BasisParams
+struct LinParams <: BasisParams
     breaks::Vector{Float64}
     evennum::Int
 end
@@ -107,7 +109,7 @@ end
 Then we have the central `Basis` type:
 
 ```julia
-mutable struct Basis{N,TP<:Tuple}
+struct Basis{N,TP<:Tuple}
     params::TP     # params to construct basis
 end
 ```
@@ -144,7 +146,7 @@ struct Expanded <: ABSR end
 `AbstractBasisMatrixRep` is an abstract types, whose subtypes are singletons that specify how the basis matrices are stored. To understand how they are different, we need to see the structure of the `BasisMatrix` type:
 
 ```julia
-mutable struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
+struct BasisMatrix{BST<:ABSR, TM<:AbstractMatrix}
     order::Matrix{Int}
     vals::Matrix{TM}
 end
@@ -168,7 +170,7 @@ for a more detailed description of the basis matrix formats.
 Finally the convenient `Interpoland` type:
 
 ```julia
-mutable struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
+struct Interpoland{TB<:Basis,TC<:AbstractArray,TBM<:BasisMatrix{Tensor}}
     basis::TB  # the basis -- can't change
     coefs::TC  # coefficients -- might change
     bmat::TBM  # BasisMatrix at nodes of `b` -- can't change

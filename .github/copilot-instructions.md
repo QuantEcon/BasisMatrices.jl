@@ -96,7 +96,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 ```
 
 ### Julia version compatibility:
-- Supports Julia 1.10 (LTS), 1.11+ (see Project.toml)
+- Supports Julia 1.6+ (see Project.toml)
 - Current CI tests against Julia 1.10 and 1.11 on Ubuntu, Windows, macOS
 
 ### Core functionality overview:
@@ -113,7 +113,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 ### CI and workflows:
 - GitHub Actions workflows in `.github/workflows/`
 - Runs on push to master and PRs
-- Tests Julia 1.10 (LTS) and 1.11 (latest) on Ubuntu, Windows, macOS
+- Tests Julia 1.x (latest) and LTS on Ubuntu, Windows, macOS
 - Includes code coverage reporting to Codecov
 - CompatHelper runs daily to check dependency updates
 - TagBot handles automatic tagging for releases

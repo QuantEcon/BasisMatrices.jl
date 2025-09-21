@@ -237,7 +237,7 @@ _ncol(x::AbstractArray) = size(x, 2)
 shape_c_expr(::Type{T}) where {T<:AbstractVector} = :(reshape(_c, reverse(_ncol.(rk.B))))
 shape_c_expr(::Type{T}) where {T<:AbstractMatrix} = :(reshape(_c, reverse(_ncol.(rk.B))..., size(_c, 2)))
 
-const RKSS = RowKron{<:Tuple{Vararg{<:SplineSparse}}}
+const RKSS = RowKron{<:Tuple{Vararg{SplineSparse}}}
 
 # if we have all `SplineSparse`s we can special case out = rk*c
 @generated function LinearAlgebra.mul!(out::StridedVecOrMat,

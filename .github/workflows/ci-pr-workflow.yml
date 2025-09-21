@@ -4,27 +4,31 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+# needed to allow julia-actions/cache to delete old caches that it has created
+permissions:
+  actions: write
+  contents: read
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: ['1.4', '1.5']
-        julia-arch: [x64]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        julia-version: ['1', 'lts']
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: julia-actions/setup-julia@latest
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
-          arch: ${{ matrix.julia-arch }}
-      - uses: julia-actions/julia-buildpkg@latest
-      - uses: julia-actions/julia-runtest@latest
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v1
+      - uses: codecov/codecov-action@v5
         with:
-          file: ./lcov.info
+          files: ./lcov.info
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false

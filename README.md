@@ -1,6 +1,6 @@
 # BasisMatrices
 
-[![Build Status](https://travis-ci.org/QuantEcon/BasisMatrices.jl.svg?branch=master)](https://travis-ci.org/QuantEcon/BasisMatrices.jl) [![codecov.io](http://codecov.io/github/QuantEcon/BasisMatrices.jl/coverage.svg?branch=master)](http://codecov.io/github/QuantEcon/BasisMatrices.jl?branch=master) [![Coverage Status](https://coveralls.io/repos/QuantEcon/BasisMatrices.jl/badge.svg?branch=master&service=github)](https://coveralls.io/github/QuantEcon/BasisMatrices.jl?branch=master)
+[![CI](https://github.com/QuantEcon/BasisMatrices.jl/actions/workflows/ci-master-workflow.yml/badge.svg)](https://github.com/QuantEcon/BasisMatrices.jl/actions/workflows/ci-master-workflow.yml) [![codecov.io](http://codecov.io/github/QuantEcon/BasisMatrices.jl/coverage.svg?branch=master)](http://codecov.io/github/QuantEcon/BasisMatrices.jl?branch=master)
 
 
 Portions of this library are inspired by the [CompEcon Matlab toolbox](http://www4.ncsu.edu/~pfackler/compecon/toolbox.html) by Paul Fackler and Mario Miranda. The original Matlab code was written to accompany the publication

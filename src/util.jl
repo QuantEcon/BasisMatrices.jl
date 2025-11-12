@@ -296,9 +296,9 @@ for (op, transp) in ((:identity, false),
         end
     end
 
-    T = op == :identity ? :(RowKron) :
-        op == :adjoint ? :(Adjoint{T,<:RowKron}) :
-        :(Transpose{T,<:RowKron})
+    rk_type = op === :identity  ? :(RowKron) :
+              op === :adjoint   ? :(Adjoint{T,<:RowKron}) :
+                                  :(Transpose{T,<:RowKron})
 
     get_B = transp ? quote
         _B = rk.parent.B
@@ -306,70 +306,80 @@ for (op, transp) in ((:identity, false),
         _B = rk.B
     end
 
-    @eval begin
-        function LinearAlgebra.mul!(out::StridedVecOrMat, rk::$(T), c::StridedVecOrMat) where {T}
-            $(checks)
-            $(get_B)
+    # Build the method signature via AST
+    sig = :(LinearAlgebra.mul!(out::StridedVecOrMat, rk::$(rk_type), c::StridedVecOrMat))
+    
+    # Add where clause only for non-identity cases
+    if op !== :identity
+        sig = Expr(:where, sig, :T)  # method-level where T
+    end
 
-            _is_sparse = map(x -> isa(x, SparseMatrixCSC), _B)
-            _last_sparse = _is_sparse[end]
+    # Build the function body
+    body = quote
+        $(checks)
+        $(get_B)
 
-            Nb = length(rk)
-            d = Array{eltype(rk)}(undef, nrow, Nb)
-            d[:, 1] .= one(eltype(rk))
+        _is_sparse = map(x -> isa(x, SparseMatrixCSC), _B)
+        _last_sparse = _is_sparse[end]
 
-            n_col_B = sizes(rk, 2)
-            cur_col_B = copy(n_col_B) .+ 1
+        Nb = length(rk)
+        d = Array{eltype(rk)}(undef, nrow, Nb)
+        d[:, 1] .= one(eltype(rk))
 
-            # simplify notation
-            ccol = size(c, 2)
-            Bend = _B[end]
+        n_col_B = sizes(rk, 2)
+        cur_col_B = copy(n_col_B) .+ 1
 
-            for i in $(outer_loop_range)  # loop over rows of out
-                if cur_col_B[end] > n_col_B[end]
-                    cur_col_B[end] = 1
-                    j = Nb
-                    while j > 1
-                        j -= 1
-                        cur_col_B[j] += 1
-                        cur_col_B[j] <= n_col_B[j] && break
-                        cur_col_B[j] = 1
-                    end
+        # simplify notation
+        ccol = size(c, 2)
+        Bend = _B[end]
 
-                    for col_d in j+1:Nb
-                        _j = col_d - 1
-                        _col_j = cur_col_B[_j]
-                        this_B = _B[_j]
-
-                        if _is_sparse[_j]
-                            d[:, col_d] .= 0.0
-
-                            # fill in non-zero rows
-                            for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
-                                _r = this_B.rowval[ptr]
-                                _v = $(op)(this_B.nzval[ptr])
-                                d[_r, col_d] = d[_r, col_d-1] * _v
-                            end
-
-                        else
-                            for row_d in 1:nrow
-                                d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
-                            end
-                        end
-                    end
-
+        for i in $(outer_loop_range)  # loop over rows of out
+            if cur_col_B[end] > n_col_B[end]
+                cur_col_B[end] = 1
+                j = Nb
+                while j > 1
+                    j -= 1
+                    cur_col_B[j] += 1
+                    cur_col_B[j] <= n_col_B[j] && break
+                    cur_col_B[j] = 1
                 end
 
-                # now we use d[:, end] .* B[end][:, cur_col_B[end]] .* c[i]
-                ccB = cur_col_B[end]
+                for col_d in j+1:Nb
+                    _j = col_d - 1
+                    _col_j = cur_col_B[_j]
+                    this_B = _B[_j]
 
-                $(fill_out)
+                    if _is_sparse[_j]
+                        d[:, col_d] .= 0.0
 
-                cur_col_B[end] += 1
+                        # fill in non-zero rows
+                        for ptr in this_B.colptr[_col_j]:(this_B.colptr[_col_j+1]-1)
+                            _r = this_B.rowval[ptr]
+                            _v = $(op)(this_B.nzval[ptr])
+                            d[_r, col_d] = d[_r, col_d-1] * _v
+                        end
+
+                    else
+                        for row_d in 1:nrow
+                            d[row_d, col_d] = d[row_d, col_d-1] * this_B[row_d, _col_j]
+                        end
+                    end
+                end
+
             end
-            out
+
+            # now we use d[:, end] .* B[end][:, cur_col_B[end]] .* c[i]
+            ccB = cur_col_B[end]
+
+            $(fill_out)
+
+            cur_col_B[end] += 1
         end
-    end  # @eval begin
+        out
+    end
+
+    # Generate the function using eval
+    eval(Expr(:function, sig, body))
 end
 
 function *(rk::Union{RowKron,Transpose{T,RowKron},Adjoint{T,RowKron}}, c::StridedVector) where {T}

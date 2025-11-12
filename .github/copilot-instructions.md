@@ -106,7 +106,6 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 - **Interpolation**: Function approximation, evaluation at arbitrary points, derivative computation
 
 ### Troubleshooting:
-- Method definition warnings in `util.jl:310` are expected
 - If tests fail with "IOError: write: broken pipe", it's usually due to output truncation, not a real failure
 
 ### CI and workflows:

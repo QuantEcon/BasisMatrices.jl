@@ -1,7 +1,7 @@
 name = "BasisMatrices"
 uuid = "08854c51-b66b-5062-a90d-8e7ae4547a49"
-authors = ["Spencer Lyon <spencer.lyon@stern.nyu.edu>"]
 version = "0.7.1"
+authors = ["Spencer Lyon <spencer.lyon@stern.nyu.edu>"]
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"

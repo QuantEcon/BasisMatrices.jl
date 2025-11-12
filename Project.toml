@@ -12,7 +12,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 Combinatorics = "1.0"
-QuantEcon = "0.16"
+QuantEcon = "0.16, 0.17"
 Statistics = "1"
 julia = "1.6"
 

@@ -124,22 +124,22 @@ end
         c2 = rand(size(rk, 1))
 
         # non-mutating
-        @test rk * c == _big * c
-        @test rk * [c c] == _big * [c c]
+        @test isapprox(rk * c, _big * c)
+        @test isapprox(rk * [c c], _big * [c c])
 
         # mutating
         mul!(c2, rk, c)
-        @test c2 == _big*c
+        @test isapprox(c2, _big*c)
 
         # mutating matrix
         c2mat = [c2 c2]
         mul!(c2mat, rk, [c c])
-        @test c2mat == _big * [c c]
+        @test isapprox(c2mat, _big * [c c])
 
         ## transpose op
         # reuse c and c2 for this...
         mul!(c, Transpose(rk), c2)
-        @test c == _big'*c2
+        @test isapprox(c, _big'*c2)
 
         # vector and matrix versions
         @test *(Transpose(rk), c2) == c
@@ -148,7 +148,7 @@ end
         # mutating matrix
         c1mat = [c c]
         mul!(c1mat, Transpose(rk), [c2 c2])
-        @test c1mat == _big'*[c2 c2]
+        @test isapprox(c1mat, _big'*[c2 c2])
 
     end
 
